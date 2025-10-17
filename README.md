@@ -1,6 +1,6 @@
 # 🧠 Transformer-XL Topic-Aware (TXL-TA)
 
-이 프로젝트는 **Transformer-XL (TXL)**을 기반으로 **Topic-Aware Memory 구조**를 실험적으로 확장한 코드베이스입니다.  
+이 프로젝트는 Transformer-XL (TXL)을 기반으로 **Topic-Aware Memory 구조**를 실험적으로 확장한 코드베이스입니다.  
 Hugging Face Datasets 및 Tokenizers를 이용해 데이터 파이프라인을 단순화하고,  
 세션 단위 기억 유지(Recall) 및 망각(Forgetting) 곡선을 평가할 수 있도록 구성되어 있습니다.
 
