@@ -1,3 +1,4 @@
+```plaintext
 transformer-xl/
 ├─ txl/
 │  ├─ mem_transformer.py     # 원본 그대로(복사본). 수정 금지
@@ -19,3 +20,4 @@ transformer-xl/
 ├─ artifacts/
 │  └─ tokenizer/ko_bpe.json
 └─ logs/
+```
