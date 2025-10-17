@@ -132,7 +132,7 @@ subgraph MEM[Memformer — Global Memory Update]
 end
 
 %% =========================
-%% HMT — Sensory → Short → Long (periodic accumulation)
+%% HMT — Sensory --> Short --> Long (periodic accumulation)
 %% =========================
 subgraph HMT[HMT — 감각→단기→장기(주기적 누적)]
   direction TB
