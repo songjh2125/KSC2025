@@ -7,7 +7,7 @@ Hugging Face Datasets 및 Tokenizers를 이용해 데이터 파이프라인을 �
 ---
 
 ## 📁 프로젝트 구조
-
+```plaintext
 transformer-xl/
 ├─ txl/
 │  ├─ mem_transformer.py     # 원본 그대로(복사본). 수정 금지
@@ -34,6 +34,7 @@ transformer-xl/
 │     └─ ko_bpe.json         # 학습용 BPE 토크나이저 저장 파일
 │
 └─ logs/                     # 학습 및 평가 로그 저장 경로
+```
 
 ---
 
@@ -105,6 +106,7 @@ tensorboard --logdir logs/
 ---
 
 ## 🧠 구조 개념도 (Mermaid)
+```mermaid
 flowchart LR
 
 %% =========================
@@ -169,8 +171,4 @@ end
 %% Legend
 %% =========================
 classDef note fill:#f7f7f7,stroke:#aaa,color:#333,font-size:11px;
-
-    C -->|Baseline| D[기존 memory 전체 연결]
-    C -->|Topic-Aware| E[토픽별 memory 선별 유지]
-    D --> F[Context 확장]
-    E --> G[장기 기억 + 망각 제어]
+```
