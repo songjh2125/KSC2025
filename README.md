@@ -38,70 +38,18 @@ transformer-xl/
 
 ---
 
-## ⚙️ 주요 구성 요소 설명
-
-| 모듈 | 역할 |
-|------|------|
-| `txl/mem_transformer.py` | Transformer-XL 원본 (Google 공식 구현 기반) |
-| `txl/mem_transformer_ta.py` | Topic-Aware Memory 구조 추가 버전 |
-| `txl_hf/train_hf.py` | Hugging Face Trainer 기반 학습 루프 |
-| `txl_hf/mem_baseline.py` | HF 포맷용 Transformer-XL 래퍼 |
-| `txl_hf/mem_ta.py` | Topic-Aware Memory 적용 HF 래퍼 |
-| `txl_hf/build_dataset.py` | 데이터셋 전처리 및 HF Dataset 객체 생성 |
-| `txl_hf/build_tokenizer.py` | BPE 기반 한국어 토크나이저 빌드 |
-| `txl_hf/utils_logging.py` | 학습 로그, 체크포인트 관리 |
-| `txl_hf/collator_stream.py` | 세션 단위로 시퀀스를 스트리밍 처리 |
-
----
-
 ## 🚀 실행 예시
-
-1️⃣ 데이터 전처리
-
-```bash
-python txl_hf/build_dataset.py --source aihub
-```
-
-2️⃣ 토크나이저 생성
-```bash
-python txl_hf/build_tokenizer.py \
-  --data_dir data/aihub \
-  --output_dir artifacts/tokenizer
-```
-
-3️⃣ 학습 (Baseline TXL)
-```bash
-python txl_hf/train_hf.py \
-  --model mem_baseline \
-  --dataset aihub \
-  --batch_size 4 \
-  --lr 1e-4 \
-  --epochs 5
-```
-
-4️⃣ 학습 (Topic-Aware TXL)
-```bash
-python txl_hf/train_hf.py \
-  --model mem_ta \
-  --dataset aihub \
-  --batch_size 4 \
-  --lr 1e-4 \
-  --epochs 5
-```
-
-5️⃣ 로그 및 시각화
-```bash
-tensorboard --logdir logs/
-```
 
 ## 🧩 Topic-Aware Memory 구조 요약
 
-| 항목 | Transformer-XL (TXL) | Topic-Aware TXL (TA-TXL) |
-|------|-----------------------|---------------------------|
-| Memory 전달 | 모든 시퀀스의 hidden state를 단순히 이어붙임 | 중요 topic memory만 선별 유지 |
-| 기억 단위 | 시퀀스 (sequence) | 세션 + 토픽 단위 |
-| 갱신 시점 | 시퀀스 단위 (매 batch) | 토픽 경계 감지 시 selective update |
-| 목적 | 문맥 길이 확장 | 주제 지속성 유지 및 망각 제어 |
+| 구분 | Transformer-XL (TXL) | Recurrent Memory Transformer (RMT) | Topic-Aware TXL (TA-TXL, Ours) |
+|------|-----------------------|-------------------------------------|---------------------------------|
+| 도입 배경 | 고정 context window 한계 극복을 위해 **segment recurrence** 도입 | TXL의 메모리 비효율 개선: **summary 기반 recurrence** | RMT의 무차별 누적 개선: **topic-aware 기억 제어** |
+| 기억 단위 | 이전 **segment hidden 전체** | 이전 **segment summary token** | **Topic 단위 S/L memory** (short–long 분리) |
+| 갱신 시점 | **매 segment** | **매 segment**(summary 생성 후) | **Topic 경계에서만 S→L 전이** |
+| 참조 방식 | 과거 segment memory **전부 참조** | **요약 memory** 참조 | **현재 topic의 L만 routing**(선택적 참조) |
+| 핵심 아이디어 | 긴 문맥 **연결** | 메모리 **효율** 향상 | **주제 지속성 유지 + 망각/간섭 제어** |
+| 주요 효과 | 문맥 길이 ↑ | 메모리 사용량 ↓ | **기억 간섭 ↓ · 회상 정확도 ↑** |
 
 ---
 
