@@ -38,9 +38,7 @@ transformer-xl/
 
 ---
 
-## 🚀 실행 예시
-
-## 🧩 Topic-Aware Memory 구조 요약
+## 🧩 모델 특징 요약
 
 | 구분 | Transformer-XL (TXL) | Recurrent Memory Transformer (RMT) | Topic-Aware TXL (TA-TXL, Ours) |
 |------|-----------------------|-------------------------------------|---------------------------------|
