@@ -1,0 +1,80 @@
+# -----------------------------
+# Python
+# -----------------------------
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+*.log
+
+# -----------------------------
+# Jupyter / Notebook
+# -----------------------------
+.ipynb_checkpoints/
+
+# -----------------------------
+# IDE / OS
+# -----------------------------
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# -----------------------------
+# Data / Experiments
+# -----------------------------
+data/
+datasets/
+outputs/
+runs/
+checkpoints/
+experiments/
+artifacts/
+logs/
+wandb/
+tensorboard/
+lightning_logs/
+
+# -----------------------------
+# Environment / Config
+# -----------------------------
+.env
+.env.*
+*.yaml~
+*.json~
+*.lock
+
+# -----------------------------
+# DVC / LFS / Cache
+# -----------------------------
+.dvc/
+*.dvc
+*.cache/
+*.dat
+*.pt
+*.pth
+*.bin
+
+# -----------------------------
+# Build / Distribution
+# -----------------------------
+build/
+dist/
+*.manifest
+*.spec
+
+# -----------------------------
+# Temporary Files
+# -----------------------------
+tmp/
+temp/
+__trash__/
