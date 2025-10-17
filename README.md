@@ -112,63 +112,58 @@ flowchart LR
 %% =========================
 %% RMT — Sequential memory passing
 %% =========================
-subgraph RMT[RMT — 순차 메모리 전달]
+subgraph RMT["RMT — 순차 메모리 전달"]
   direction LR
-  R1[Segment 1] --> RM1[Memory_1]
-  R2[Segment 2 + Memory_1] --> RM2[Memory_2]
-  R3[Segment 3 + Memory_2] --> RM3[Memory_3]
-  Rellipsis[(...)] --> RMellipsis[(...)]
+  R1["Segment 1"] --> RM1["Memory_1"]
+  R2["Segment 2 + Memory_1"] --> RM2["Memory_2"]
+  R3["Segment 3 + Memory_2"] --> RM3["Memory_3"]
+  Rellipsis["(...)"] --> RMellipsis["(...)"]
 end
 
 %% =========================
 %% Memformer — Global memory update
 %% =========================
-subgraph MEM[Memformer — Global Memory Update]
+subgraph MEM["Memformer — Global Memory Update"]
   direction TB
-  M1[Segment 1] --> GMU[Global Memory Update]
-  M2[Segment 2] --> GMU
-  M3[Segment 3] --> GMU
-  GMU --> GM[Global Memory]
+  M1["Segment 1"] --> GMU["Global Memory Update"]
+  M2["Segment 2"] --> GMU
+  M3["Segment 3"] --> GMU
+  GMU --> GM["Global Memory"]
 end
 
 %% =========================
-%% HMT --- Sensory --> Short --> Long (periodic accumulation)
+%% HMT — Sensory -> Short -> Long (periodic accumulation)
 %% =========================
-subgraph HMT[HMT --- 감각→단기→장기(주기적 누적)]
+subgraph HMT["HMT — 감각 -> 단기 -> 장기 (주기적 누적)"]
   direction TB
-  H1S[Segment 1] --> H1x[sensory_1] --> H1s[short_memory_1] --> HL[long_memory]
-  H2S[Segment 2] --> H2x[sensory_2] --> H2s[short_memory_2] --> HL
-  H3S[Segment 3] --> H3x[sensory_3] --> H3s[short_memory_3] --> HL
-  H4S[Segment 4] --> H4x[sensory_4] --> H4s[short_memory_4] --> HL
+  H1S["Segment 1"] --> H1x["sensory_1"] --> H1s["short_memory_1"] --> HL["long_memory"]
+  H2S["Segment 2"] --> H2x["sensory_2"] --> H2s["short_memory_2"] --> HL
+  H3S["Segment 3"] --> H3x["sensory_3"] --> H3s["short_memory_3"] --> HL
+  H4S["Segment 4"] --> H4x["sensory_4"] --> H4s["short_memory_4"] --> HL
 end
 
 %% =========================
 %% Ours — Topic-aware summary & selective reuse
 %% =========================
-subgraph OURS[Ours — 토픽 요약 + 선택적 참조(routing)]
+subgraph OURS["Ours — 토픽 요약 + 선택적 참조 (routing)"]
   direction TB
-  O1[Sequence 1] --> O1m[seq_memory_1]
-  O2[Sequence 2] --> O2m[seq_memory_2]
-  O3[Sequence 3] --> O3m[seq_memory_3]
+  O1["Sequence 1"] --> O1m["seq_memory_1"]
+  O2["Sequence 2"] --> O2m["seq_memory_2"]
+  O3["Sequence 3"] --> O3m["seq_memory_3"]
 
-  %% Topic Block A summary → topic_memory_A
-  O1m --> TBA[Topic Block A 요약]
+  %% Topic Block A summary -> topic_memory_A
+  O1m --> TBA["Topic Block A 요약"]
   O2m --> TBA
   O3m --> TBA
-  TBA --> TMA[topic_memory_A]
+  TBA --> TMA["topic_memory_A"]
 
-  NewTopic[(사용자가 새로운 화제 제시)]
-  NewTopic --> O4[Sequence 4]
-  O4 --> O4m[seq_memory_4]
+  NewTopic["사용자가 새로운 화제 제시"] --> O4["Sequence 4"]
+  O4 --> O4m["seq_memory_4"]
 
   %% Selective reuse (only relevant topic memory)
-  TMA -. 선택적 참조 .-> O4
+  TMA -. "선택적 참조" .-> O4
 
-  O5[Sequence 5] --> O5m[seq_memory_5]
+  O5["Sequence 5"] --> O5m["seq_memory_5"]
 end
 
-%% =========================
-%% Legend
-%% =========================
-classDef note fill:#f7f7f7,stroke:#aaa,color:#333,font-size:11px;
 ```
