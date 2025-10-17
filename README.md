@@ -41,7 +41,7 @@ transformer-xl/
 ## 🧩 모델 특징 요약
 
 | 구분 | Transformer-XL (TXL) | Recurrent Memory Transformer (RMT) | Topic-Aware TXL (TA-TXL, Ours) |
-|------|-----------------------|-------------------------------------|---------------------------------|
+|------|---------------------------------|---------------------------------|---------------------------------|
 | 도입 배경 | 고정 context window 한계 극복을 위해 **segment recurrence** 도입 | TXL의 메모리 비효율 개선: **summary 기반 recurrence** | RMT의 무차별 누적 개선: **topic-aware 기억 제어** |
 | 기억 단위 | 이전 **segment hidden 전체** | 이전 **segment summary token** | **Topic 단위 S/L memory** (short–long 분리) |
 | 갱신 시점 | **매 segment** | **매 segment**(summary 생성 후) | **Topic 경계에서만 S→L 전이** |
