@@ -1,0 +1,12 @@
+torch                       # CUDA 환경에 맞춰 설치
+transformers>=4.41
+accelerate
+peft
+bitsandbytes
+datasets
+scikit-learn
+numpy
+openai                      # make_labels.py에서 사용(백업룰 있긴 함)
+konlpy                      # (옵션) 한국어 처리 시
+hanspell                    # (옵션) data_utils에서 자동 fallback 있음
+sentencepiece               # 일부 모델 토크나이저 필요
