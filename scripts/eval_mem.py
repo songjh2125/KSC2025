@@ -5,7 +5,7 @@ from sklearn.metrics import precision_recall_fscore_support
 from datasets import load_dataset
 from transformers import AutoTokenizer, AutoModel
 
-from data_utils import basic_normalize
+from src.data_utils import basic_normalize
 
 def load_cache(path):
     arr=[]

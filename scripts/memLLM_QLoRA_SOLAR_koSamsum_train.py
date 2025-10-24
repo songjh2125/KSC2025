@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # trainer
+import sys, os; sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+
 from __future__ import annotations
 import os, json, math, random
 from typing import Dict, Any, List
@@ -12,9 +14,9 @@ from peft import LoraConfig, get_peft_model
 from accelerate import Accelerator
 
 from transformers import AutoModel  # ko-sroberta
-from mem_modules import MemConfig, MemoryManager, AuxHeads
-from summarizer_local import LocalSummarizer
-from data_utils import basic_normalize, spell_normalize
+from src.mem_modules import MemConfig, MemoryManager, AuxHeads
+from src.summarizer_local import LocalSummarizer
+from src.data_utils import basic_normalize, spell_normalize
 
 class TrainConfig:
     base_model = "Upstage/SOLAR-10.7B-Instruct-v1.0"

@@ -25,8 +25,8 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import PeftModel
 
 from transformers import AutoModel  # ko-sroberta
-from mem_modules import MemConfig, MemoryManager, AuxHeads
-from summarizer_local import LocalSummarizer
+from src.mem_modules import MemConfig, MemoryManager, AuxHeads
+from src.summarizer_local import LocalSummarizer
 
 # ------------------------
 # Utils

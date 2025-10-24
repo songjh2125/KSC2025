@@ -5,13 +5,13 @@ KSC2025/
 ├── .env.example                  # 예시 환경 변수 파일 (예: OPENAI_API_KEY)
 ├── .gitignore
 │
-├── src/                          # Python 모듈 (import path: src)
-│   ├── __init__.py
-│   ├── mem_modules.py            # (제공) 메모리/보조 헤드/Proj_mem 정의
-│   ├── summarizer_local.py       # (제공) 로컬 SOLAR 요약기
-│   └── data_utils.py             # (제공) 정규화 및 데이터 유틸
-│
 ├── scripts/                      # 실행 스크립트 (직접 실행)
+│   ├── src/                      # Python 모듈 (import path: scripts/src)
+│   │   ├── __init__.py
+│   │   ├── mem_modules.py        # (제공) 메모리/보조 헤드/Proj_mem 정의
+│   │   ├── summarizer_local.py   # (제공) 로컬 SOLAR 요약기
+│   │   └── data_utils.py         # (제공) 정규화 및 데이터 유틸
+│   │
 │   ├── make_labels.py            # (제공) GPT-4o-mini 기반 라벨 생성 및 JSONL 캐시
 │   ├── memLLM_QLoRA_SOLAR_koSamsum_train.py  # (제공) 학습 스크립트
 │   ├── eval_mem.py               # (제공) 평가 스크립트
