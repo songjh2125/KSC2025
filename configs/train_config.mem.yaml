@@ -1,0 +1,44 @@
+# train_config.mem.yaml
+# ----- 모델 / 경로 -----
+base_model: "Qwen/Qwen2.5-1.5B-Instruct"
+embedding_model: "jhgan/ko-sroberta-multitask"
+output_dir: "out/qwen-qlora-mem"
+
+# ----- 데이터 경로 -----
+train_path: "../data/train_data.jsonl"
+val_path: "../data/val_data.jsonl"
+
+# ----- 학습 파라미터 -----
+lr: 2e-4
+batch_size: 1
+grad_accum: 16
+epochs: 1
+max_length: 1024
+max_samples: 0
+warmup_ratio: 0.03
+seed: 42
+normalize: "basic"
+
+# ----- LoRA -----
+lora_r: 8
+lora_alpha: 16
+lora_dropout: 0.05
+target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - up_proj
+  - down_proj
+  - gate_proj
+
+# ----- QLoRA 4bit -----
+bnb_4bit_compute_dtype: "float16"
+bnb_4bit_use_double_quant: true
+bnb_4bit_quant_type: "nf4"
+try_flash_attn: false
+
+# ----- 메모리 학습 on -----
+enable_memory_loss: true          # ← 여기만 base와 다름
+pool_last_n_tokens: 64
+contrastive_tau: 0.07

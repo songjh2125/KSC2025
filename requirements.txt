@@ -1,9 +1,8 @@
 torch                                                         # CUDA 환경에 맞춰 설치
 transformers>=4.41
-accelerate
 peft
 bitsandbytes
-datasets
+datasets<4.0.0
 scikit-learn
 numpy
 openai                                                        # make_labels.py에서 사용(백업룰 있긴 함)

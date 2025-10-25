@@ -12,20 +12,17 @@ KSC2025/
 │   │   ├── summarizer_local.py   # (제공) 로컬 SOLAR 요약기
 │   │   └── data_utils.py         # (제공) 정규화 및 데이터 유틸
 │   │
-│   ├── make_labels.py            # (제공) GPT-4o-mini 기반 라벨 생성 및 JSONL 캐시
-│   ├── memLLM_QLoRA_SOLAR_koSamsum_train.py  # (제공) 학습 스크립트
 │   ├── eval_mem.py               # (제공) 평가 스크립트
-│   └── mem_infer_demo.py         # (제공) 추론 데모
-│
-├── cache/                        # make_labels.py 결과 캐시(JSONL 등)
-│   └── .gitkeep
+│   ├── mem_infer_demo.py         # (제공) 추론 데모
+│   ├── memLLM_QLoRA_QWEN_train.py
+│   └── preprocess.py
 │
 ├── out/                          # 학습 산출물 (모델, 어댑터, aux_mem.pt 등)
 │   ├── solar-mem-qlora/          # 기본 체크포인트 디렉터리
 │   │   └── .gitkeep
 │   └── .gitkeep
 │
-├── logs/                         # 학습 및 평가 로그
+├── log/                         # 학습 및 평가 로그
 │   └── .gitkeep
 │
 ├── configs/                      # (옵션) 설정 파일
