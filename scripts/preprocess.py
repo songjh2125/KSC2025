@@ -38,10 +38,9 @@ def safe_read_utf8(path: Path) -> str:
 def label_all_sessions(sessions):
     """
     sessions: list of { dialog: [{speaker, utterance}, ...], sessionSummary: {dialogSummary} }
-    return:
-      text: ["A: ...", "B: ...", ...]            # 모든 세션 대화를 이어붙인 리스트
-      boundaries: [0/1, ...]                     # 각 세션의 '마지막 턴' 인덱스만 1
-      seg_summaries: ["", ..., "세션요약", ...]   # boundary 위치에만 요약 텍스트
+    변경점:
+      - 두 번째 세션(i>=1)부터는 앞의 2개 발화(보통 A1, B1)를 제거하고 이어붙임
+      - boundaries/seg_summaries는 '실제로 남은(turns) 마지막 발화' 자리에만 기록
     """
     labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     spk2lab = {}
@@ -49,27 +48,29 @@ def label_all_sessions(sessions):
 
     text, boundaries, seg_summaries = [], [], []
 
-    for sess in sessions:
+    for i, sess in enumerate(sessions):
         dialog = sess.get("dialog", []) or []
         ss = sess.get("sessionSummary", {}) or {}
         sum_text = str(ss.get("dialogSummary", "") or "").strip()
 
-        for turn in dialog:
+        # 추가된 부분: 두 번째 세션부터 앞 2개 발화 제거
+        turns = dialog if i == 0 else dialog[2:]
+
+        # 남은 턴만 이어붙임
+        for turn in turns:
             spk = str(turn.get("speaker", "")).strip()
             utt = str(turn.get("utterance", "")).strip()
             if not utt:
                 continue
             if spk not in spk2lab:
-                if next_idx < len(labels):
-                    spk2lab[spk] = labels[next_idx]
-                else:
-                    spk2lab[spk] = f"SPK{next_idx}"
+                spk2lab[spk] = labels[next_idx] if next_idx < len(labels) else f"SPK{next_idx}"
                 next_idx += 1
             text.append(f"{spk2lab[spk]}: {utt}")
             boundaries.append(0)
             seg_summaries.append("")
 
-        if dialog:
+        # 남은 턴이 있을 때만 boundary/summary 표기
+        if turns:
             last_idx = len(text) - 1
             boundaries[last_idx] = 1
             seg_summaries[last_idx] = sum_text
