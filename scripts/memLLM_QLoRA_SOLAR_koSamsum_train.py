@@ -3,8 +3,9 @@
 import sys, os; sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from __future__ import annotations
-import os, json, math, random
+import os, json, math, random, yaml
 from typing import Dict, Any, List
+from pathlib import Path
 
 import torch, torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
@@ -19,70 +20,86 @@ from src.summarizer_local import LocalSummarizer
 from src.data_utils import basic_normalize, spell_normalize
 
 class TrainConfig:
-    base_model = "Upstage/SOLAR-10.7B-Instruct-v1.0"
-    embedding_model = "jhgan/ko-sroberta-multitask"
-    dataset_name = "heegyu/ko-samsum"
-    output_dir = "out/solar-mem-qlora"
-    lr = 2e-4; batch_size = 1; grad_accum = 16; epochs = 1
-    max_length = 1024; max_samples = 0; warmup_ratio = 0.03; seed = 42
-    labels_cache = "cache/labels_ko_samsum.jsonl"
-    normalize = "basic"  # none|basic|spell
+    def __init__(self, cfg_path="configs/train_config.yaml"):
+        p = Path(cfg_path)
+        assert p.exists(), f"Config file not found: {p}"
+        with open(p, "r", encoding="utf-8") as f:
+            cfg = yaml.safe_load(f)
 
-    lora_r=8; lora_alpha=16; lora_dropout=0.05
-    target_modules = ("q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj")
-    bnb_4bit_compute_dtype="float16"; bnb_4bit_use_double_quant=True; bnb_4bit_quant_type="nf4"
+        # YAML의 필드들을 속성으로 등록
+        for k, v in cfg.items():
+            setattr(self, k, v)
 
-class KoSamsumDataset(Dataset):
-    def __init__(self, tokenizer, max_length, max_samples, labels_cache, normalizer='basic'):
+        # 기본값 보정
+        self.max_length = getattr(self, "max_length", 1024)
+        self.normalize = getattr(self, "normalize", "basic")
+
+class AIHubDataset(Dataset):
+    def __init__(self, tokenizer, jsonl_path, max_length=1024, max_samples=0, normalizer="basic"):
         self.tok = tokenizer
-        ds = load_dataset("heegyu/ko-samsum", split="train")
-        if max_samples and max_samples>0:
-            ds = ds.select(range(min(max_samples, len(ds))))
-        # load cache
-        cache = []
-        if os.path.exists(labels_cache):
-            with open(labels_cache, 'r', encoding='utf-8') as f:
-                for line in f:
-                    cache.append(json.loads(line))
-        cache_by_id = {c['id']: c for c in cache if 'id' in c}
-        self.samples = []
-        for idx, ex in enumerate(ds):
-            dialog = ex.get('dialogue') or ex.get('conversation') or ''
-            summary = ex.get('summary') or ''
-            if len(summary) < 100:
-                continue
-            if normalizer=='basic':
-                dialog = '\n'.join(basic_normalize(u) for u in dialog.split('\n'))
-                summary = basic_normalize(summary)
-            elif normalizer=='spell':
-                dialog = '\n'.join(spell_normalize(u) for u in dialog.split('\n'))
-                summary = spell_normalize(summary)
-            meta = cache_by_id.get(idx, None)
-            boundaries = meta['boundaries'] if meta else [0]*len([u for u in dialog.split('\n') if u.strip()])
-            seg_summ = meta['seg_summaries'] if meta else [""]*len(boundaries)
-            self.samples.append({
-                'id': idx,
-                'dialogue': dialog,
-                'summary': summary,
-                'boundaries': boundaries,
-                'seg_summaries': seg_summ,
-            })
         self.max_length = max_length
+        self.samples = []
+
+        assert os.path.exists(jsonl_path), f"JSONL not found: {jsonl_path}"
+        with open(jsonl_path, "r", encoding="utf-8") as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                ex = json.loads(line)
+
+                # turns (text 리스트) → 하나의 대화 문자열로 변환
+                turns = ex.get("text", []) or []
+                if normalizer == "basic":
+                    turns = [basic_normalize(t) for t in turns]
+                elif normalizer == "spell":
+                    turns = [spell_normalize(t) for t in turns]
+                dialogue = "\n".join(turns)
+
+                # boundaries / summaries
+                boundaries = ex.get("boundaries", [])
+                seg_summaries = ex.get("seg_summaries", [""] * len(boundaries))
+
+                # 길이 맞추기 (혹시 불일치가 있을 때)
+                if len(boundaries) != len(turns):
+                    diff = len(turns) - len(boundaries)
+                    if diff > 0:
+                        boundaries += [0] * diff
+                        seg_summaries += [""] * diff
+                    else:
+                        boundaries = boundaries[:len(turns)]
+                        seg_summaries = seg_summaries[:len(turns)]
+
+                self.samples.append({
+                    "id": ex.get("id"),
+                    "dialogue": dialogue,
+                    "boundaries": boundaries,
+                    "seg_summaries": seg_summaries,
+                })
+
+                if max_samples and len(self.samples) >= max_samples:
+                    break
 
     def __len__(self):
         return len(self.samples)
 
     def __getitem__(self, i):
         it = self.samples[i]
-        enc = self.tok(it['dialogue'], truncation=True, max_length=self.max_length, return_tensors='pt')
-        ids = enc['input_ids'].squeeze(0)
+        enc = self.tok(
+            it["dialogue"],
+            truncation=True,
+            max_length=self.max_length,
+            return_tensors="pt",
+        )
+        ids = enc["input_ids"].squeeze(0)
         labels = ids.clone()
-        b_label = torch.tensor(it['boundaries'][-1] if it['boundaries'] else 0, dtype=torch.float)
+        b_label = torch.tensor(it["boundaries"][-1] if it["boundaries"] else 0, dtype=torch.float)
+
         return {
-            'input_ids': ids,
-            'labels': labels,
-            'b_label': b_label,
-            'seg_summaries': it['seg_summaries'],
+            "input_ids": ids,
+            "labels": labels,
+            "b_label": b_label,
+            "seg_summaries": it["seg_summaries"],
+            "id": it["id"],
         }
 
 class Trainer:
@@ -101,7 +118,7 @@ class Trainer:
         self.embed_model = AutoModel.from_pretrained(cfg.embedding_model).to(self.device)
         self.mem = MemoryManager(MemConfig(), self.embed_model, self.embed_tok, hidden)
         self.summarizer = LocalSummarizer(model_name=cfg.base_model)
-        self.ds = KoSamsumDataset(self.tok, cfg.max_length, cfg.max_samples, cfg.labels_cache, normalizer=cfg.normalize)
+        self.ds = AIHubDataset(self.tok, cfg.train_path, cfg.max_length, cfg.max_samples, normalizer=cfg.normalize)
         self.loader = DataLoader(self.ds, batch_size=cfg.batch_size, shuffle=True, collate_fn=self._collate)
         self.optimizer = torch.optim.AdamW(list(self.model.parameters())+list(self.aux.parameters())+list(self.mem.parameters()), lr=cfg.lr)
         total_steps = (len(self.loader)*cfg.epochs)//cfg.grad_accum
