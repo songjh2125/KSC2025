@@ -5,6 +5,8 @@ from __future__ import annotations
 import os, json, yaml, datetime
 from typing import Dict, Any, List
 from pathlib import Path
+import re
+from bitsandbytes.optim import Adam8bit
 
 import torch, torch.nn as nn, torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
@@ -55,7 +57,8 @@ class TrainConfig:
         # 필수/기본값 보정 (YAML에 없으면 아래 값 사용)
         self.base_model = getattr(self, "base_model", "Qwen/Qwen2.5-1.5B-Instruct")
         self.embedding_model = getattr(self, "embedding_model", "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
-        self.train_path = getattr(self, "train_path", "data/train_data.jsonl")
+        # self.train_path = getattr(self, "train_path", "data/train_data.jsonl")
+        self.train_path = getattr(self, "train_path", "data/longest_8_samples.jsonl")
         self.output_dir = getattr(self, "output_dir", "out/mem-qwen2.5-1.5b-qlora")
         self.max_samples = getattr(self, "max_samples", 0)
         self.normalize = getattr(self, "normalize", "basic")
@@ -183,8 +186,9 @@ class AIHubDataset(Dataset):
 class Trainer:
     def __init__(self, cfg: TrainConfig):
         self.cfg = cfg
-        self.acc = Accelerator()
+        self.acc = Accelerator(mixed_precision="bf16")
         self.device = self.acc.device
+        self._last_hidden = None
 
         # Tokenizer
         self.tok = AutoTokenizer.from_pretrained(cfg.base_model, use_fast=False)
@@ -203,7 +207,7 @@ class Trainer:
         base = AutoModelForCausalLM.from_pretrained(
             cfg.base_model,
             quantization_config=qconf,
-            dtype=torch.float16,
+            dtype=torch.bfloat16,
             device_map=None,
             attn_implementation="flash_attention_2" if cfg.try_flash_attn else None,
         )
@@ -218,7 +222,6 @@ class Trainer:
         base = prepare_model_for_kbit_training(base)
         base.gradient_checkpointing_enable()
         base.config.use_cache = False
-        base.config.output_hidden_states = True
 
         hidden = base.config.hidden_size
 
@@ -243,6 +246,7 @@ class Trainer:
 
         # AuxHeads
         self.aux = AuxHeads(hidden_size=hidden, embed_dim=self.emb_dim).to(self.device)
+        self.aux.to(dtype=torch.bfloat16)
 
         # MemoryManager (encode 유틸)
         self.mem = MemoryManager(MemConfig(), self.embed_model, self.embed_tok)
@@ -252,8 +256,9 @@ class Trainer:
         self.loader = DataLoader(self.ds, batch_size=cfg.batch_size, shuffle=True, collate_fn=self._collate)
 
         # Optim/Sched
-        self.optimizer = torch.optim.AdamW(
-            list(self.model.parameters()) + list(self.aux.parameters()), lr=cfg.lr
+        self.optimizer = Adam8bit(
+            list(self.model.parameters()) + list(self.aux.parameters()),
+            lr=cfg.lr
         )
         total_steps = max(1, (len(self.loader) * cfg.epochs) // max(1, cfg.grad_accum))
         self.sched = get_linear_schedule_with_warmup(
@@ -264,6 +269,61 @@ class Trainer:
         (self.model, self.aux, self.optimizer, self.loader, self.sched) = self.acc.prepare(
             self.model, self.aux, self.optimizer, self.loader, self.sched
         )
+
+        # ---- hook ----
+        def _capture_last_hidden(module, inputs, output):
+            hs = output[0] if isinstance(output, (tuple, list)) else output
+            n_last = getattr(self.cfg, "pool_last_n_tokens", 64)
+            pooled = hs[:, -n_last:, :].mean(dim=1).detach()
+            self._last_hidden = pooled
+
+        def _unwrap(m):
+            while hasattr(m, "module"): m = m.module
+            return m
+
+        def _maybe_base(m):
+            m = _unwrap(m)
+            try:
+                from peft import PeftModel
+                if isinstance(m, PeftModel):
+                    m = _unwrap(m.get_base_model())
+            except Exception:
+                pass
+            return getattr(m, "base_model", m)
+
+        def _find_tr(backbone):
+            for k in ("model","transformer","backbone"):
+                tr = getattr(backbone, k, None)
+                if tr is not None: return tr
+            return backbone
+
+        def _find_layers(tr):
+            for k in ("layers","h","blocks"):
+                ml = getattr(tr, k, None)
+                if isinstance(ml, nn.ModuleList) and len(ml)>0: return ml
+            for root in ("decoder","encoder"):
+                r = getattr(tr, root, None)
+                if r is not None:
+                    for k in ("layers","h","blocks"):
+                        ml = getattr(r, k, None)
+                        if isinstance(ml, nn.ModuleList) and len(ml)>0: return ml
+            best=None; n=0
+            for _, mod in tr.named_modules():
+                if isinstance(mod, nn.ModuleList) and len(mod)>n:
+                    best=mod; n=len(mod)
+            return best
+
+        bb = _maybe_base(self.model)
+        tr = _find_tr(bb)
+        layers = _find_layers(tr)
+        if isinstance(layers, nn.ModuleList) and len(layers)>0:
+            layers[-1].register_forward_hook(_capture_last_hidden)
+        else:
+            for cand in ("norm","ln_f","final_layernorm","final_norm"):
+                mod = getattr(tr, cand, None)
+                if isinstance(mod, nn.Module):
+                    mod.register_forward_hook(_capture_last_hidden)
+                    break
 
         # ---- logging ----
         subdir = "mem"
@@ -286,7 +346,9 @@ class Trainer:
             pad = maxlen - len(x['input_ids'])
             ids  = torch.cat([x['input_ids'], torch.full((pad,), self.tok.pad_token_id)])
             labs = torch.cat([x['labels'], torch.full((pad,), -100)])
-            attn = (ids != self.tok.pad_token_id).long()
+            ids  = torch.cat([x["input_ids"], torch.full((pad,), self.tok.pad_token_id, dtype=torch.long)])
+            labs = torch.cat([x["labels"], torch.full((pad,), -100, dtype=torch.long)])
+            attn = (ids != self.tok.pad_token_id)
             ids_list.append(ids); labels_list.append(labs); attn_list.append(attn)
             b_list.append(x['b_label']); sum_texts.append(x.get('sum_text', ""))
         return {
@@ -306,7 +368,7 @@ class Trainer:
         if not isinstance(emb, torch.Tensor):
             emb = torch.tensor(emb)
         emb = emb.to(self.acc.device, dtype=torch.float32)
-        emb = F.normalize(emb, dim=-1)
+        emb = F.normalize(emb.float(), dim=-1).to(torch.bfloat16)
         return emb
 
     # 인배치 InfoNCE
@@ -334,32 +396,28 @@ class Trainer:
             shift_labels.view(-1),
             ignore_index=-100
         )
+
         # Aux
-        b_logit, e_pred = self.aux(pooled)
-        bce = F.binary_cross_entropy_with_logits(b_logit, b_label)
+        b_logit, e_pred = self.aux(pooled)  # bf16
+        bce = F.binary_cross_entropy_with_logits(b_logit.float(), b_label.float())
 
         if has_sum_mask.sum().item() > 0:
-            e_pred_n = F.normalize(e_pred, dim=-1)
-            e_t_n    = F.normalize(e_t, dim=-1)
+            e_pred_f = e_pred.float(); e_t_f = e_t.float()
+            e_pred_n = F.normalize(e_pred_f, dim=-1)
+            e_t_n    = F.normalize(e_t_f, dim=-1)
             cos = 1 - (e_pred_n * e_t_n).sum(dim=-1)
             cos = (cos * has_sum_mask).sum() / (has_sum_mask.sum() + 1e-9)
 
-            mse = F.mse_loss(e_pred, e_t, reduction='none').mean(dim=-1)
+            mse = F.mse_loss(e_pred_f, e_t_f, reduction='none').mean(dim=-1)
             mse = (mse * has_sum_mask).sum() / (has_sum_mask.sum() + 1e-9)
         else:
             cos = logits.new_zeros(())
             mse = logits.new_zeros(())
 
-        info_nce = self._contrastive_infonce(e_pred, e_t, has_sum_mask, tau=0.07)
+        info_nce = self._contrastive_infonce(e_pred.float(), e_t.float(), has_sum_mask, tau=0.07)
 
         loss = lm + bce + 0.25 * (cos + mse) + 0.5 * info_nce
-        logs = {
-            'lm': lm.item(),
-            'bce': bce.item(),
-            'cos': float(cos),
-            'mse': float(mse),
-            'info_nce': float(info_nce),
-        }
+        logs = {'lm': lm.item(), 'bce': bce.item(), 'cos': float(cos), 'mse': float(mse), 'info_nce': float(info_nce)}
         return loss, logs
 
     # 학습
@@ -374,9 +432,16 @@ class Trainer:
                 b_label= batch['b_label'].to(self.acc.device)
                 sum_text = batch['sum_text']
 
-                out = self.model(input_ids=ids, attention_mask=attn, output_hidden_states=True)
+                out = self.model(input_ids=ids, attention_mask=attn)
                 logits = out.logits
-                pooled = out.hidden_states[-1][:, -64:, :].mean(dim=1)
+                assert self._last_hidden is not None, "last_hidden 캡처 실패"
+                n_last = getattr(self.cfg, "pool_last_n_tokens", 64)
+                pooled = self._last_hidden
+                if pooled.dim() == 3:
+                    pooled = pooled[:, -n_last:, :].mean(dim=1)  # [B, T, H] -> [B, H]
+                elif pooled.dim() != 2:
+                    raise ValueError(f"Unexpected pooled dim: {pooled.shape}")
+                self._last_hidden = None
 
                 has_sum = torch.tensor(
                     [1.0 if (s and len(s.strip())>0) else 0.0 for s in sum_text],
@@ -390,7 +455,8 @@ class Trainer:
 
                 self.acc.backward(loss)
                 if (step+1) % self.cfg.grad_accum == 0:
-                    self.optimizer.step(); self.sched.step(); self.optimizer.zero_grad()
+                    self.optimizer.step(); self.sched.step(); self.optimizer.zero_grad(set_to_none=True)
+                    torch.cuda.empty_cache()
                 if self.acc.is_main_process and step % 20 == 0:
                     rec = {'event': 'train_log', 'step': step, **logs}
                     print(rec)

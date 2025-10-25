@@ -5,6 +5,7 @@ from __future__ import annotations
 import os, json, yaml, datetime
 from pathlib import Path
 from typing import List, Dict, Any
+from bitsandbytes.optim import Adam8bit
 
 import torch, torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
@@ -121,7 +122,7 @@ def collate_fn(batch: List[Dict[str, Any]], pad_id: int):
 class Trainer:
     def __init__(self, cfg: TrainConfig):
         self.cfg = cfg
-        self.acc = Accelerator()
+        self.acc = Accelerator(mixed_precision="bf16")
         self.device = self.acc.device
 
         self.tok = AutoTokenizer.from_pretrained(cfg.base_model, use_fast=False)
@@ -138,7 +139,7 @@ class Trainer:
         base = AutoModelForCausalLM.from_pretrained(
             cfg.base_model,
             quantization_config=qconf,
-            dtype=torch.float16,
+            dtype=torch.bfloat16,
             device_map=None,
             attn_implementation="flash_attention_2" if cfg.try_flash_attn else None,
         )
@@ -166,7 +167,7 @@ class Trainer:
             collate_fn=lambda b: collate_fn(b, self.tok.pad_token_id)
         )
 
-        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=cfg.lr)
+        self.optimizer = Adam8bit(self.model.parameters(), lr=cfg.lr)
         total_steps = max(1, (len(self.loader) * cfg.epochs) // max(1, cfg.grad_accum))
         self.sched = get_linear_schedule_with_warmup(
             self.optimizer, int(total_steps * cfg.warmup_ratio), total_steps

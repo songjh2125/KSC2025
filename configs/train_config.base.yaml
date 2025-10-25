@@ -11,10 +11,10 @@ val_path: "data/val_data.jsonl"
 # ----- 학습 파라미터 -----
 lr: 2e-4
 batch_size: 1
-grad_accum: 48     # 메모리 여유 없으면 48~64까지도 OK
+grad_accum: 64     # 메모리 여유 없으면 48~64까지도 OK
 epochs: 1
-max_length: 2304
-max_samples: 200
+max_length: 2048
+max_samples: 0
 warmup_ratio: 0.03
 seed: 42
 normalize: "basic"

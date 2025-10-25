@@ -54,13 +54,13 @@ python scripts/memLLM_QLoRA_QWEN_train.py \
 ### 추론
 ```bash
 # 베이스라인
-python mem_infer_demo.py \
+python scripts/infer.py \
   --ckpt out/qwen-qlora-base \
   --mode baseline \
   --load_4bit
 
 # 메모리
-python mem_infer_demo.py \
+python scripts/infer.py \
   --ckpt out/qwen-qlora-mem \
   --mode mem \
   --load_4bit \
@@ -70,7 +70,7 @@ python mem_infer_demo.py \
 ### 평가
 ```bash
 # 베이스라인: Judge만
-python scripts/eval_mem.py \
+python scripts/eval.py \
   --ckpt out/qwen-qlora-base \
   --data cache/labels_ko_samsum.jsonl \
   --mode base \
@@ -78,7 +78,7 @@ python scripts/eval_mem.py \
   --load_4bit
 
 # 메모리: Boundary/Summary + Judge
-python scripts/eval_mem.py \
+python scripts/eval.py \
   --ckpt out/qwen-qlora-mem \
   --data cache/labels_ko_samsum.jsonl \
   --mode mem \
