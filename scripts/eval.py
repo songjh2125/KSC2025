@@ -1,3 +1,4 @@
+# eval.py
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from __future__ import annotations
@@ -246,7 +247,12 @@ def eval_judge(model, tok, data, sample_n: int = 50, gen_max_new: int = 128, tem
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ckpt", type=str, default="out/solar-mem-qlora")
-    ap.add_argument("--data", type=str, required=True, help="라벨 JSONL (text/boundaries/seg_summaries)")
+    ap.add_argument(
+        "--data",
+        type=str,
+        default="data/val_data.jsonl",
+        help="평가용 JSONL (기본: data/val_data.jsonl)"
+    )
     ap.add_argument("--boundary_thr", type=float, default=0.50)
     ap.add_argument("--max_turns", type=int, default=0, help="0은 전체 턴 평가")
     ap.add_argument("--judge", action="store_true", help="LLM-as-Judge 실행 (OPENAI_API_KEY 필요)")

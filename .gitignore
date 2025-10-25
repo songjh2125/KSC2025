@@ -39,7 +39,8 @@ runs/
 checkpoints/
 experiments/
 artifacts/
-logs/
+log/
+out/
 wandb/
 tensorboard/
 lightning_logs/

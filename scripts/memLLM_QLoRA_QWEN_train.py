@@ -55,34 +55,54 @@ class TrainConfig:
         # 필수/기본값 보정 (YAML에 없으면 아래 값 사용)
         self.base_model = getattr(self, "base_model", "Qwen/Qwen2.5-1.5B-Instruct")
         self.embedding_model = getattr(self, "embedding_model", "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
-        self.train_path = getattr(self, "train_path", "data/aihub_multi_session.jsonl")
+        self.train_path = getattr(self, "train_path", "data/train_data.jsonl")
         self.output_dir = getattr(self, "output_dir", "out/mem-qwen2.5-1.5b-qlora")
         self.max_samples = getattr(self, "max_samples", 0)
         self.normalize = getattr(self, "normalize", "basic")
 
+        # ---- 타입 보정(문자열로 들어온 값 대비) ----
+        def _as_float(x, default):
+            try: return float(x)
+            except Exception: return float(default)
+
+        def _as_int(x, default):
+            try: return int(x)
+            except Exception: return int(default)
+
+        def _as_bool(x, default):
+            if isinstance(x, bool): return x
+            if isinstance(x, str):
+                return x.strip().lower() in {"1","true","yes","y","t"}
+            return bool(default)
+
         # 시퀀스/배치
-        self.max_length = getattr(self, "max_length", 1024)
-        self.batch_size = getattr(self, "batch_size", 1)       # micro-batch per process
-        self.grad_accum = getattr(self, "grad_accum", 16)
-        self.epochs = getattr(self, "epochs", 1)
+        self.max_length = _as_int(getattr(self, "max_length", 1024), 1024)
+        self.batch_size = _as_int(getattr(self, "batch_size", 1), 1)       # micro-batch per process
+        self.grad_accum = _as_int(getattr(self, "grad_accum", 16), 16)
+        self.epochs     = _as_int(getattr(self, "epochs", 1), 1)
 
         # Optim
-        self.lr = getattr(self, "lr", 2e-4)
-        self.warmup_ratio = getattr(self, "warmup_ratio", 0.03)
+        self.lr           = _as_float(getattr(self, "lr", 2e-4), 2e-4)
+        self.warmup_ratio = _as_float(getattr(self, "warmup_ratio", 0.03), 0.03)
 
-        # QLoRA
-        self.bnb_4bit_compute_dtype = getattr(self, "bnb_4bit_compute_dtype", "float16")
-        self.bnb_4bit_use_double_quant = getattr(self, "bnb_4bit_use_double_quant", True)
-        self.bnb_4bit_quant_type = getattr(self, "bnb_4bit_quant_type", "nf4")
+        # QLoRA (dtype 문자열은 그대로 사용)
+        self.bnb_4bit_compute_dtype   = getattr(self, "bnb_4bit_compute_dtype", "float16")
+        self.bnb_4bit_use_double_quant= _as_bool(getattr(self, "bnb_4bit_use_double_quant", True), True)
+        self.bnb_4bit_quant_type      = getattr(self, "bnb_4bit_quant_type", "nf4")
 
         # LoRA
-        self.lora_r = getattr(self, "lora_r", 16)
-        self.lora_alpha = getattr(self, "lora_alpha", 32)
-        self.lora_dropout = getattr(self, "lora_dropout", 0.05)
-        self.target_modules = tuple(getattr(self, "target_modules", ("q_proj", "v_proj")))
+        self.lora_r       = _as_int(getattr(self, "lora_r", 16), 16)
+        self.lora_alpha   = _as_int(getattr(self, "lora_alpha", 32), 32)
+        self.lora_dropout = _as_float(getattr(self, "lora_dropout", 0.05), 0.05)
+
+        # target_modules는 리스트/튜플/콤마문자열 모두 허용
+        tm = getattr(self, "target_modules", ("q_proj", "v_proj"))
+        if isinstance(tm, str):
+            tm = [t.strip() for t in tm.split(",") if t.strip()]
+        self.target_modules = tuple(tm)
 
         # 기타
-        self.try_flash_attn = getattr(self, "try_flash_attn", True)
+        self.try_flash_attn = _as_bool(getattr(self, "try_flash_attn", True), True)
 
 # ---- 데이터셋 ----
 class AIHubDataset(Dataset):
@@ -216,7 +236,7 @@ class Trainer:
 
         # 임베딩 모델(고정)
         self.embed_tok = AutoTokenizer.from_pretrained(cfg.embedding_model)
-        self.embed_model = AutoModel.from_pretrained(cfg.embedding_model).to(self.device)
+        self.embed_model = AutoModel.from_pretrained(cfg.embedding_model).to("cpu")
         for p in self.embed_model.parameters():
             p.requires_grad = False
         self.emb_dim = getattr(self.embed_model.config, "hidden_size", 768)

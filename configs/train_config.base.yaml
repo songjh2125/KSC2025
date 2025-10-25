@@ -5,15 +5,15 @@ embedding_model: "jhgan/ko-sroberta-multitask"   # base 모드에선 학습에�
 output_dir: "out/qwen-qlora-base"
 
 # ----- 데이터 경로 -----
-train_path: "../data/train_data.jsonl"
-val_path: "../data/val_data.jsonl"
+train_path: "data/train_data.jsonl"
+val_path: "data/val_data.jsonl"
 
 # ----- 학습 파라미터 -----
 lr: 2e-4
 batch_size: 1
-grad_accum: 16
+grad_accum: 32      # 메모리 여유 없으면 48~64까지도 OK
 epochs: 1
-max_length: 1024
+max_length: 2304
 max_samples: 0
 warmup_ratio: 0.03
 seed: 42
@@ -33,7 +33,7 @@ target_modules:
   - gate_proj
 
 # ----- QLoRA 4bit -----
-bnb_4bit_compute_dtype: "float16"
+bnb_4bit_compute_dtype: "bfloat16"
 bnb_4bit_use_double_quant: true
 bnb_4bit_quant_type: "nf4"
 try_flash_attn: false
