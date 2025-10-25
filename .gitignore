@@ -40,6 +40,7 @@ checkpoints/
 experiments/
 artifacts/
 log/
+ksc/
 out/
 wandb/
 tensorboard/
