@@ -34,62 +34,11 @@ def safe_read_utf8(path: Path) -> str:
     return s.replace("\u2028", "").replace("\u2029", "").replace("\ufeff", "")
 
 # ---------------------------------------------------
-# 화자 라벨링 (파일 전체 기준 A,B,C,...)
+# 2세션 파일 파싱: (file_id, [sess1, sess2]) 반환
+#  - sess = {"dialog": [...], "summary": "..."}
+#  - 세션이 정확히 2개가 아니면 None
 # ---------------------------------------------------
-def label_all_sessions(sessions):
-    """
-    sessions: list of { dialog: [{speaker, utterance}, ...], sessionSummary: {dialogSummary} }
-    변경점:
-      - 두 번째 세션(i>=1)부터는 앞의 2개 발화(보통 A1, B1)를 제거하고 이어붙임
-      - boundaries/seg_summaries는 '실제로 남은(turns) 마지막 발화' 자리에만 기록
-    """
-    labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    spk2lab = {}
-    next_idx = 0
-
-    text, boundaries, seg_summaries = [], [], []
-
-    for i, sess in enumerate(sessions):
-        dialog = sess.get("dialog", []) or []
-        ss = sess.get("sessionSummary", {}) or {}
-        sum_text = str(ss.get("dialogSummary", "") or "").strip()
-
-        # 추가된 부분: 두 번째 세션부터 앞 2개 발화 제거
-        turns = dialog if i == 0 else dialog[2:]
-
-        # 남은 턴만 이어붙임
-        for turn in turns:
-            spk = str(turn.get("speaker", "")).strip()
-            utt = str(turn.get("utterance", "")).strip()
-            if not utt:
-                continue
-            if spk not in spk2lab:
-                spk2lab[spk] = labels[next_idx] if next_idx < len(labels) else f"SPK{next_idx}"
-                next_idx += 1
-            text.append(f"{spk2lab[spk]}: {utt}")
-            boundaries.append(0)
-            seg_summaries.append("")
-
-        # 남은 턴이 있을 때만 boundary/summary 표기
-        if turns:
-            last_idx = len(text) - 1
-            boundaries[last_idx] = 1
-            seg_summaries[last_idx] = sum_text
-
-    return text, boundaries, seg_summaries
-
-# ---------------------------------------------------
-# 단일 파일 -> 1 레코드 (세션 합치기)
-# ---------------------------------------------------
-def convert_file_to_single_record(in_path: Path):
-    """
-    변경 규칙:
-      - 파일 안의 모든 세션을 하나의 레코드로 합침
-      - id: 파일 아이디 (FileInfo.filename 있으면 그 stem, 없으면 파일명 stem)
-      - text: 모든 세션 dialog를 순서대로 이어붙인 리스트
-      - boundaries: 각 세션의 마지막 턴 인덱스만 1
-      - seg_summaries: boundary 위치에만 해당 세션 요약 텍스트
-    """
+def read_two_session_file(in_path: Path):
     try:
         data = json.loads(safe_read_utf8(in_path))
     except Exception as e:
@@ -101,15 +50,61 @@ def convert_file_to_single_record(in_path: Path):
     file_id = Path(filename).stem if filename else in_path.stem
 
     sessions = data.get("sessionInfo", []) or []
-    if not sessions:
+    if len(sessions) != 2:
         return None
 
-    text, boundaries, seg_summaries = label_all_sessions(sessions)
-    if not text:
-        return None
+    out = []
+    for s in sessions:
+        dialog = s.get("dialog", []) or []
+        sum_text = str((s.get("sessionSummary", {}) or {}).get("dialogSummary", "") or "").strip()
+        out.append({"dialog": dialog, "summary": sum_text})
+    return file_id, out
 
+# ---------------------------------------------------
+# 파일 두 개를 짝지어 1레코드 생성:
+#   text: A-1, B-1, A-2', B-2'
+#   (A-2', B-2'는 앞 2발화 제거)
+#   boundaries/seg_summaries는 각 세그먼트의 "남은 마지막 턴"에만 기록
+#   id: "<file_id_A>__<file_id_B>"
+# ---------------------------------------------------
+def build_paired_record(fileA, fileB):
+    (idA, [A1, A2]) = fileA
+    (idB, [B1, B2]) = fileB
+
+    segs = [
+        {"turns": A1["dialog"],     "summary": A1["summary"]},
+        {"turns": B1["dialog"],     "summary": B1["summary"]},
+        {"turns": A2["dialog"][2:], "summary": A2["summary"]},  # 앞 2발화 제거
+        {"turns": B2["dialog"][2:], "summary": B2["summary"]},  # 앞 2발화 제거
+    ]
+
+    labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    spk2lab, next_idx = {}, 0
+
+    text, boundaries, seg_summaries = [], [], []
+
+    for seg in segs:
+        turns = seg["turns"]
+        for t in turns:
+            spk = str(t.get("speaker", "")).strip()
+            utt = str(t.get("utterance", "")).strip()
+            if not utt:
+                continue
+            if spk not in spk2lab:
+                spk2lab[spk] = labels[next_idx] if next_idx < len(labels) else f"SPK{next_idx}"
+                next_idx += 1
+            text.append(f"{spk2lab[spk]}: {utt}")
+            boundaries.append(0)
+            seg_summaries.append("")
+
+        if turns:
+            last_idx = len(text) - 1
+            boundaries[last_idx] = 1
+            seg_summaries[last_idx] = seg["summary"]
+
+    rec_id = f"{idA}__{idB}"
     return {
-        "id": file_id,
+        "id": rec_id,
         "text": text,
         "boundaries": boundaries,
         "seg_summaries": seg_summaries,
@@ -160,15 +155,27 @@ def main():
         in_path = Path(input_spec)
         files = collect_files(in_path, pattern)
 
-        out_records = []
+        # 2세션 파일만 파싱
+        parsed = []
         for fp in sorted(files):
-            rec = convert_file_to_single_record(fp)
-            if rec:
+            parsed_file = read_two_session_file(fp)
+            if parsed_file is not None:
+                parsed.append(parsed_file)
+
+        # 짝짓기 (A,B), (C,D), ...  홀수면 마지막 하나 드롭
+        out_records = []
+        if len(parsed) % 2 == 1:
+            sys.stderr.write(f"[WARN] 2세션 파일의 개수가 홀수({len(parsed)})입니다. 마지막 하나는 건너뜁니다.\n")
+
+        limit = len(parsed) - (len(parsed) % 2)
+        for i in range(0, limit, 2):
+            rec = build_paired_record(parsed[i], parsed[i+1])
+            if rec["text"]:  # 빈 레코드 방지
                 out_records.append(rec)
 
         write_jsonl(out_records, Path(output))
         merged.extend(out_records)
-        print(f"[INFO] wrote {len(out_records)} records → {output}")
+        print(f"[INFO] wrote {len(out_records)} paired records → {output}")
 
     # 여러 파일을 하나로 합치기 (옵션)
     merge_output = cfg.get("merge_output")
