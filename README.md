@@ -1,33 +1,88 @@
 ```bash
 KSC2025/
 ├── README.md
-├── requirements.txt              # 필수 패키지 목록 (Transformers / PEFT / Accelerate / DeepSpeed 등)
-├── .env.example                  # 예시 환경 변수 파일 (예: OPENAI_API_KEY)
+├── requirements.txt
+├── .env            # 사용자가 설정해야 함
 ├── .gitignore
 │
-├── scripts/                      # 실행 스크립트 (직접 실행)
-│   ├── src/                      # Python 모듈 (import path: scripts/src)
+├── scripts/
+│   ├── src/
 │   │   ├── __init__.py
-│   │   ├── mem_modules.py        # (제공) 메모리/보조 헤드/Proj_mem 정의
-│   │   ├── summarizer_local.py   # (제공) 로컬 SOLAR 요약기
-│   │   └── data_utils.py         # (제공) 정규화 및 데이터 유틸
+│   │   ├── data_utils.py
+│   │   ├── mem_modules.py
+│   │   └── summarizer_local.py
 │   │
-│   ├── eval_mem.py               # (제공) 평가 스크립트
-│   ├── mem_infer_demo.py         # (제공) 추론 데모
+│   ├── eval.py           
+│   ├── infer.py          
 │   ├── memLLM_QLoRA_QWEN_train.py
 │   └── preprocess.py
 │
-├── out/                          # 학습 산출물 (모델, 어댑터, aux_mem.pt 등)
-│   ├── solar-mem-qlora/          # 기본 체크포인트 디렉터리
-│   │   └── .gitkeep
+├── configs/
+│   ├── eval_config.yaml
+│   ├── get_data.yaml
+│   ├── preprocess.yaml
+│   ├── train_config.base.yaml
+│   └── train_config.mem.yaml
+│
+├── out/
+│   └── solar-mem-qlora/
+│       └── .gitkeep
+│
+├── log/
 │   └── .gitkeep
 │
-├── log/                         # 학습 및 평가 로그
+├── cache/
 │   └── .gitkeep
 │
-├── configs/                      # (옵션) 설정 파일
-│   ├── train_config.yaml         # 하이퍼파라미터 및 경로 외부화
-│   └── eval_config.yaml
+├── data/
+│   └── .gitkeep
 │
-└── Makefile                      # 자주 쓰는 명령어 단축용 (옵션)
+└── Makefile 
+```
+
+### 학습
+```bash
+# 베이스라인: 텍스트만 
+python scripts/QLoRA_QWEN_train.py \
+  --cfg configs/train_config.base.yaml
+
+# 메모리: 경계/요약 임베딩 + aux.pt 저장
+python scripts/memLLM_QLoRA_QWEN_train.py \
+  --cfg configs/train_config.mem.yaml
+```
+
+### 추론
+```bash
+# 베이스라인
+python mem_infer_demo.py \
+  --ckpt out/qwen-qlora-base \
+  --mode baseline \
+  --load_4bit
+
+# 메모리
+python mem_infer_demo.py \
+  --ckpt out/qwen-qlora-mem \
+  --mode mem \
+  --load_4bit \
+  --sum_4bit
+```
+
+### 평가
+```bash
+# 베이스라인: Judge만
+python scripts/eval_mem.py \
+  --ckpt out/qwen-qlora-base \
+  --data cache/labels_ko_samsum.jsonl \
+  --mode base \
+  --judge --judge_model gpt-4o-mini --sample_n 50 \
+  --load_4bit
+
+# 메모리: Boundary/Summary + Judge
+python scripts/eval_mem.py \
+  --ckpt out/qwen-qlora-mem \
+  --data cache/labels_ko_samsum.jsonl \
+  --mode mem \
+  --boundary_thr 0.5 \
+  --judge --judge_model gpt-4o-mini --sample_n 50 \
+  --load_4bit
 ```
