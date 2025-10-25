@@ -59,6 +59,7 @@ aihubshell
 *.yaml~
 *.json~
 *.lock
+ksc/
 
 # -----------------------------
 # DVC / LFS / Cache
