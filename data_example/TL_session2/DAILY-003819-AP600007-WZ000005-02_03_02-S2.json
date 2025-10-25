@@ -1,0 +1,987 @@
+{
+    "FileInfo": {
+        "filename": "DAILY-003819-AP600007-WZ000005-02_03_02-S2.json",
+        "sessionLevel": "2"
+    },
+    "participantsInfo": {
+        "numberOfParticipants": "2",
+        "speaker1": {
+            "participantID": "E0053",
+            "gender": "여성",
+            "age": "30대",
+            "occupation": "사무직",
+            "bPlace": "서울/경기/인천",
+            "gPlace": "서울/경기/인천",
+            "rPlace": "서울/경기/인천",
+            "educationLevel": "대졸",
+            "major": "기타"
+        },
+        "speaker2": {
+            "participantID": "F0053",
+            "gender": "여성",
+            "age": "60대 이상",
+            "occupation": "주부",
+            "bPlace": "서울/경기/인천",
+            "gPlace": "서울/경기/인천",
+            "rPlace": "서울/경기/인천",
+            "educationLevel": "고졸",
+            "major": "기타"
+        }
+    },
+    "multisessionInfo": {
+        "multisessionID": "003819"
+    },
+    "personaInfo": {
+        "apprenticeInfo": {
+            "personaID": "AP600007",
+            "personaFeatures": [
+                "나는 관광/감상의 지명에 대한 공부를 하고 있다.",
+                "나는 짠 음식을 좋아한다",
+                "나는 요즘, 가끔 초조하다"
+            ],
+            "speakerType": "speaker1"
+        },
+        "wizardInfo": {
+            "personaID": "WZ000005",
+            "personaFeatures": [
+                "나는 지명에 대해 잘 아는 챗봇이다."
+            ],
+            "speakerType": "speaker2"
+        }
+    },
+    "topicInfo": {
+        "topicID": "02_03_02",
+        "largeCategory": "취미",
+        "mediumCategory": "관광/감상",
+        "smallCategory": "장소"
+    },
+    "sessionInfo": [
+        {
+            "prevSessionID": "",
+            "prevTimeInfo": {
+                "timeNum": null,
+                "timeUnit": null
+            },
+            "nthSession": "1",
+            "numberOfUtterances": "14",
+            "numberOfTurns": "7",
+            "sessionID": "003819-1",
+            "sessionKeywords": [
+                "*당오름*,*당오름*의 지명"
+            ],
+            "dialog": [
+                {
+                    "speaker": "speaker1",
+                    "personaID": "AP600007",
+                    "participantID": "E0053",
+                    "utterance": "안녕 나 요즘 관광 지명에 대해서 공부하고 있거든.",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "나는 관광 지명에 대한 공부를 하고 있다. ",
+                    "timestamp": 1695559366000
+                },
+                {
+                    "speaker": "speaker2",
+                    "personaID": "WZ000005",
+                    "participantID": "F0053",
+                    "utterance": "안녕하세요? 저는 지명에 대해 잘 알고 있습니다.",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695559376000
+                },
+                {
+                    "speaker": "speaker1",
+                    "personaID": "AP600007",
+                    "participantID": "E0053",
+                    "utterance": "오 그러면 궁금한 거 다 물어봐도 되겠네?",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695559386000
+                },
+                {
+                    "speaker": "speaker2",
+                    "personaID": "WZ000005",
+                    "participantID": "F0053",
+                    "utterance": "네 궁금한 점은 저한테 물어보세요.",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695559412000
+                },
+                {
+                    "speaker": "speaker1",
+                    "personaID": "AP600007",
+                    "participantID": "E0053",
+                    "utterance": "당오름에 대해서 알고 있는 정보 다 알려줘.",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695559422000
+                },
+                {
+                    "speaker": "speaker2",
+                    "personaID": "WZ000005",
+                    "participantID": "F0053",
+                    "utterance": "당오름(堂岳) 또는 당산봉(唐山峰)은 제주특별자치도 제주시 한경면 고산리에 위치한 측화산으로 한경면(翰京面)은 제주특별자치도 제주시의 서쪽 끝에 있는 면입니다. ",
+                    "context": {
+                        "query": "당오름",
+                        "contents": [
+                            {
+                                "documentID": "1091486",
+                                "documentTitle": "당오름",
+                                "content": [
+                                    "당오름(堂岳) 또는 당산봉(唐山峰)은 제주특별자치도 제주시 한경면 고산리에 위치한 측화산이다.",
+                                    "높이는 148m, 비고 118m, 둘레는 4,674m, 면적은 534,135m2, 폭은 1,259m이며, 모양은 복합형으로 되어 있다.",
+                                    "이 오름",
+                                    "서쪽 꼭대기에는 봉수가 설치되었는데, 차귀봉수라고 한다.",
+                                    "위치.",
+                                    "당오름은 동 · 남사면은 둥그스름하면서도 가파르며 곳곳에 암층이 드러나 있고 서사면은 바다로 내리지르는 암벽, 북사면은 말굽형 분화구가 크게 열려 그 서쪽 등성이는 해안을 따라, 동쪽 등성이는 일주도로를 따라 북으로 뻗어 내린다.",
+                                    "이 봉수대 터 아래쪽 바닷가에는 자구내포구가 있고, 그 포구 가까이에 자구내 개당이 있다.",
+                                    "당오름의 서쪽 어귀에는 고산 당목잇당이 있고, 남쪽에는 지석묘가 있는데 당오름",
+                                    "남서쪽 벌판에는 신석기시대의 유물 산포지가 있다.",
+                                    "두럭바우 아래쪽 바닷가에는 저승문이라는 세 개의 해식 동굴이 있다.",
+                                    "일주도로 변의 용수리 입구까지는 여러 갈래의 길이 있다.",
+                                    "여기서 고산리 쪽 500m 지점에서 용수리 쪽으로 200m를 가다가 왼쪽으로 100m 더 가면 오른편에 표석이 있다.",
+                                    "표지석과 연한 등성이를 따라서 오를 수 있는데, 정상까지는 약 15분 정도 걸린다.",
+                                    "배경.",
+                                    "한경면(翰京面)은 제주특별자치도 제주시의 서쪽 끝에 있는 면이다.",
+                                    "북쪽과 서쪽은 바다와 접해 있고, 동쪽은 한경면, 남쪽은 서귀포시 대정읍과 접한다.",
+                                    "한라산의 북서사면에 위치하여 멀리 수월봉과 당산봉에 이르며, 차귀도로 이어진다.",
+                                    "지형은 한라산 가장자리 해발고도 200m 이하의 저지대가 거의 완만한 경사지를 이루며, 중산간 지역에 넓은 초지를 형성하고 있다.",
+                                    "조선 시대에는 18세기 중반까지 제주목 우면(右面)에 속하였다.",
+                                    "18세기 후반 우면이 신우면과 구우면으로 분리되면서 구우면에 속하였다.",
+                                    "1914년에는 제주군 구우면에 속했다가 1935년 구우면이 한림면으로 개칭되면서 한림면에 속했다.",
+                                    "1956년 한림면을 폐지하고 한림읍과 한경면으로 분리되었는데, 이때부터 북제주군 한경면이 되었다.",
+                                    "2006년 제주특별자치도가 출범하면서 제주시 한경면이 되었다.",
+                                    "현재 면 소재지인 신창리를 비롯한 13개의 법정리를 관할하고 있다.",
+                                    "전해오는 이야기.",
+                                    "당오름은 ‘당’이 있는 오름이라는 데서 붙인 것인데, 제주도 여러 곳에서 확인된다.",
+                                    "이 오름에는 크고 작은 봉우리가 있는데, 각 봉우리마다 이름이 있다.",
+                                    "주봉은 당오름이라 하고, 주봉 북쪽 봉수대터는 망오름",
+                                    "또는 개영·궤영이라고 한다.",
+                                    "가운데에 알오름이 있고, 알오름의 동쪽 작은 봉우리는 저성머리, 서쪽은 두럭바우라고 한다.",
+                                    "당오름은 『신증동국여지승람』(대정)에 '차귀악(遮歸岳)'이라 기재했다.",
+                                    "『탐라지』(대정)에도 '차귀악(遮歸岳)'이라 표기 했는데, \"당산(堂山)이라고도 한다. 대정현 서쪽 26리에 있다.\"라고 했다.",
+                                    "『조선강역총도』에는 '차귀악(遮歸岳)', 『탐라순력도』(한라장촉)에 '당산(堂山)'이라 기록했고 이곳에 봉수가 있어서 『탐라지도병서』, 『해동지도』(제주삼현), 『제주삼읍도총지도』 등에는 '당산봉(堂山烽)', 『제주삼읍전도』와 『제주군읍지』의 「제주지도」에는 '당산봉(唐山烽)'으로 표기했다.",
+                                    "『조선지지자료』에는 '당산(堂山)', 『조선지형도』에는 '고산악(高山岳)'이라 수록했다.",
+                                    "원래 자귀나무가 많아서 '자귀오름'이라 하고 이를 '차귀악(遮歸岳)'으로 표기했는데, 이곳에 차귀당(遮歸堂)이 들어서면서 당산(堂山) 또는 당악(堂岳)이라 했다고 한다.",
+                                    "지금의 당산봉(唐山峰)은 당산봉(堂山峰)을 잘못 표기한 것이다.",
+                                    "산 모양을 표현하여 '선인독서(仙仁讀書) 노승타고(老僧打鼓) 백로하전(白鷺下田)'이라고 전한다.",
+                                    "즉, \"남쪽에서 바라보면 신선이 앉아 책을 읽는 형상이고, 동쪽에서는 노승이 북을 두드리는 형상이며, 북쪽으로는 백로가 날개를 펴서 논밭에 내려앉는 형상\"이라는 의미이다."
+                                ]
+                            },
+                            {
+                                "documentID": "1091482",
+                                "documentTitle": "정물오름",
+                                "content": [
+                                    "정물오름(井水岳)은 대한민국 제주특별자치도 제주시 한림읍에 있는 기생 화산으로 제주특별자치도 제주시 한림읍 금악리에 있는 해발 466m.1의 오름(측화산)이다.",
+                                    "위치.",
+                                    "제주특별자치도 제주시 한림읍 금악리에 위치한 측화산이다.",
+                                    "북서쪽으로 넓게 터진 말굽형 화구를 지니고 있다.",
+                                    "서쪽 기슭에는 원추형 알오름이 솟아 있는데, 정물알오름이라고 한다.",
+                                    "기슭에 샘이 있어서 '정물오름'이라 했다고 한다.",
+                                    "배경.",
+                                    "제주시 한림읍 금악리 지형의 특성은 해안에서 완만한 경사가 내륙쪽으로 깊숙이 이어져 층위별 저지대가 넓게 펼쳐져 있다.",
+                                    "화산 지형의 특색으로 16개의 오름이 분포하는데 정물오름을 비롯하여 금오름(427.5m)· 당오름· 새별오름·세미소오름 등이 해발 200m의 중산간 마을인 금악리에 집중되어 있다.",
+                                    "용암 동굴은 24곳에서 발견되는데 쌍용굴·협재굴·소천굴 등이 협재리, 명월리, 상명리에 있다.",
+                                    "해안 쪽으로의 완만한 경사는 협재리 등의 해안 저지대에 용암 표면이 고결되었지만 내부는 유동 용암이 하류로 흘러 생겨난 용암 동굴이 발달하게 하는 요인이 되기도 한다.",
+                                    "해안 지역은 평지 지형이어서 용천수가 이용 가능한 지역에서는 오래전부터 마을이 발달해 왔다.",
+                                    "현재 대림리에서 한림리에 이르는 지역에는 참나무와 느티나무 등이 무성한 숲을 이루고 있어 한수풀로 불리며, 중산간 지대에는 넓은 초지가 발달해 있다.",
+                                    "전해오는 이야기.",
+                                    "정물오름은 『탐라순력도』(한라장촉)에 '정수(井水)', 『탐라도』와 『제주삼읍도총지도』, 『제주삼읍전도』, 『제주군읍지』의 「제주지도」에 '정수악(井水岳), '『조선지형도』에는 '정수악(汀水岳)'으로 표기했다.",
+                                    "개가 가리켜 준 명당터라는 전설이 있다."
+                                ]
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        [
+                            true,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            true,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false
+                        ],
+                        [
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false
+                        ]
+                    ],
+                    "summary": "당오름(堂岳) 또는 당산봉(唐山峰)은 제주특별자치도 제주시 한경면 고산리에 위치한 측화산으로 한경면(翰京面)은 제주특별자치도 제주시의 서쪽 끝에 있는 면이다.",
+                    "timestamp": 1695559548000
+                },
+                {
+                    "speaker": "speaker1",
+                    "personaID": "AP600007",
+                    "participantID": "E0053",
+                    "utterance": "당오름은 한경면에 있었구나. 지명에 대해 좀 더 알려줄래?",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695559629000
+                },
+                {
+                    "speaker": "speaker2",
+                    "personaID": "WZ000005",
+                    "participantID": "F0053",
+                    "utterance": "이 오름에는 크고 작은 봉우리가 있는데, 각 봉우리마다 이름이 있습니다. 주봉은 당오름이라 하고, 주봉 북쪽 봉수대터는 망오름 또는 개영·궤영이라고 합니다. ",
+                    "context": {
+                        "query": "당오름",
+                        "contents": [
+                            {
+                                "documentID": "1091486",
+                                "documentTitle": "당오름",
+                                "content": [
+                                    "당오름(堂岳) 또는 당산봉(唐山峰)은 제주특별자치도 제주시 한경면 고산리에 위치한 측화산이다.",
+                                    "높이는 148m, 비고 118m, 둘레는 4,674m, 면적은 534,135m2, 폭은 1,259m이며, 모양은 복합형으로 되어 있다.",
+                                    "이 오름",
+                                    "서쪽 꼭대기에는 봉수가 설치되었는데, 차귀봉수라고 한다.",
+                                    "위치.",
+                                    "당오름은 동 · 남사면은 둥그스름하면서도 가파르며 곳곳에 암층이 드러나 있고 서사면은 바다로 내리지르는 암벽, 북사면은 말굽형 분화구가 크게 열려 그 서쪽 등성이는 해안을 따라, 동쪽 등성이는 일주도로를 따라 북으로 뻗어 내린다.",
+                                    "이 봉수대 터 아래쪽 바닷가에는 자구내포구가 있고, 그 포구 가까이에 자구내 개당이 있다.",
+                                    "당오름의 서쪽 어귀에는 고산 당목잇당이 있고, 남쪽에는 지석묘가 있는데 당오름",
+                                    "남서쪽 벌판에는 신석기시대의 유물 산포지가 있다.",
+                                    "두럭바우 아래쪽 바닷가에는 저승문이라는 세 개의 해식 동굴이 있다.",
+                                    "일주도로 변의 용수리 입구까지는 여러 갈래의 길이 있다.",
+                                    "여기서 고산리 쪽 500m 지점에서 용수리 쪽으로 200m를 가다가 왼쪽으로 100m 더 가면 오른편에 표석이 있다.",
+                                    "표지석과 연한 등성이를 따라서 오를 수 있는데, 정상까지는 약 15분 정도 걸린다.",
+                                    "배경.",
+                                    "한경면(翰京面)은 제주특별자치도 제주시의 서쪽 끝에 있는 면이다.",
+                                    "북쪽과 서쪽은 바다와 접해 있고, 동쪽은 한경면, 남쪽은 서귀포시 대정읍과 접한다.",
+                                    "한라산의 북서사면에 위치하여 멀리 수월봉과 당산봉에 이르며, 차귀도로 이어진다.",
+                                    "지형은 한라산 가장자리 해발고도 200m 이하의 저지대가 거의 완만한 경사지를 이루며, 중산간 지역에 넓은 초지를 형성하고 있다.",
+                                    "조선 시대에는 18세기 중반까지 제주목 우면(右面)에 속하였다.",
+                                    "18세기 후반 우면이 신우면과 구우면으로 분리되면서 구우면에 속하였다.",
+                                    "1914년에는 제주군 구우면에 속했다가 1935년 구우면이 한림면으로 개칭되면서 한림면에 속했다.",
+                                    "1956년 한림면을 폐지하고 한림읍과 한경면으로 분리되었는데, 이때부터 북제주군 한경면이 되었다.",
+                                    "2006년 제주특별자치도가 출범하면서 제주시 한경면이 되었다.",
+                                    "현재 면 소재지인 신창리를 비롯한 13개의 법정리를 관할하고 있다.",
+                                    "전해오는 이야기.",
+                                    "당오름은 ‘당’이 있는 오름이라는 데서 붙인 것인데, 제주도 여러 곳에서 확인된다.",
+                                    "이 오름에는 크고 작은 봉우리가 있는데, 각 봉우리마다 이름이 있다.",
+                                    "주봉은 당오름이라 하고, 주봉 북쪽 봉수대터는 망오름",
+                                    "또는 개영·궤영이라고 한다.",
+                                    "가운데에 알오름이 있고, 알오름의 동쪽 작은 봉우리는 저성머리, 서쪽은 두럭바우라고 한다.",
+                                    "당오름은 『신증동국여지승람』(대정)에 '차귀악(遮歸岳)'이라 기재했다.",
+                                    "『탐라지』(대정)에도 '차귀악(遮歸岳)'이라 표기 했는데, \"당산(堂山)이라고도 한다. 대정현 서쪽 26리에 있다.\"라고 했다.",
+                                    "『조선강역총도』에는 '차귀악(遮歸岳)', 『탐라순력도』(한라장촉)에 '당산(堂山)'이라 기록했고 이곳에 봉수가 있어서 『탐라지도병서』, 『해동지도』(제주삼현), 『제주삼읍도총지도』 등에는 '당산봉(堂山烽)', 『제주삼읍전도』와 『제주군읍지』의 「제주지도」에는 '당산봉(唐山烽)'으로 표기했다.",
+                                    "『조선지지자료』에는 '당산(堂山)', 『조선지형도』에는 '고산악(高山岳)'이라 수록했다.",
+                                    "원래 자귀나무가 많아서 '자귀오름'이라 하고 이를 '차귀악(遮歸岳)'으로 표기했는데, 이곳에 차귀당(遮歸堂)이 들어서면서 당산(堂山) 또는 당악(堂岳)이라 했다고 한다.",
+                                    "지금의 당산봉(唐山峰)은 당산봉(堂山峰)을 잘못 표기한 것이다.",
+                                    "산 모양을 표현하여 '선인독서(仙仁讀書) 노승타고(老僧打鼓) 백로하전(白鷺下田)'이라고 전한다.",
+                                    "즉, \"남쪽에서 바라보면 신선이 앉아 책을 읽는 형상이고, 동쪽에서는 노승이 북을 두드리는 형상이며, 북쪽으로는 백로가 날개를 펴서 논밭에 내려앉는 형상\"이라는 의미이다."
+                                ]
+                            },
+                            {
+                                "documentID": "1091482",
+                                "documentTitle": "정물오름",
+                                "content": [
+                                    "정물오름(井水岳)은 대한민국 제주특별자치도 제주시 한림읍에 있는 기생 화산으로 제주특별자치도 제주시 한림읍 금악리에 있는 해발 466m.1의 오름(측화산)이다.",
+                                    "위치.",
+                                    "제주특별자치도 제주시 한림읍 금악리에 위치한 측화산이다.",
+                                    "북서쪽으로 넓게 터진 말굽형 화구를 지니고 있다.",
+                                    "서쪽 기슭에는 원추형 알오름이 솟아 있는데, 정물알오름이라고 한다.",
+                                    "기슭에 샘이 있어서 '정물오름'이라 했다고 한다.",
+                                    "배경.",
+                                    "제주시 한림읍 금악리 지형의 특성은 해안에서 완만한 경사가 내륙쪽으로 깊숙이 이어져 층위별 저지대가 넓게 펼쳐져 있다.",
+                                    "화산 지형의 특색으로 16개의 오름이 분포하는데 정물오름을 비롯하여 금오름(427.5m)· 당오름· 새별오름·세미소오름 등이 해발 200m의 중산간 마을인 금악리에 집중되어 있다.",
+                                    "용암 동굴은 24곳에서 발견되는데 쌍용굴·협재굴·소천굴 등이 협재리, 명월리, 상명리에 있다.",
+                                    "해안 쪽으로의 완만한 경사는 협재리 등의 해안 저지대에 용암 표면이 고결되었지만 내부는 유동 용암이 하류로 흘러 생겨난 용암 동굴이 발달하게 하는 요인이 되기도 한다.",
+                                    "해안 지역은 평지 지형이어서 용천수가 이용 가능한 지역에서는 오래전부터 마을이 발달해 왔다.",
+                                    "현재 대림리에서 한림리에 이르는 지역에는 참나무와 느티나무 등이 무성한 숲을 이루고 있어 한수풀로 불리며, 중산간 지대에는 넓은 초지가 발달해 있다.",
+                                    "전해오는 이야기.",
+                                    "정물오름은 『탐라순력도』(한라장촉)에 '정수(井水)', 『탐라도』와 『제주삼읍도총지도』, 『제주삼읍전도』, 『제주군읍지』의 「제주지도」에 '정수악(井水岳), '『조선지형도』에는 '정수악(汀水岳)'으로 표기했다.",
+                                    "개가 가리켜 준 명당터라는 전설이 있다."
+                                ]
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        [
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            true,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false
+                        ],
+                        [
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false
+                        ]
+                    ],
+                    "summary": "오름에는 크고 작은 봉우리가 있는데, 각 봉우리마다 이름이 있다. 주봉은 당오름이라 하고, 주봉 북쪽 봉수대터는 망오름 또는 개영·궤영이라고 한다.",
+                    "timestamp": 1695559730000
+                },
+                {
+                    "speaker": "speaker1",
+                    "personaID": "AP600007",
+                    "participantID": "E0053",
+                    "utterance": "그렇구나. 요즘 공부하기 막막했는데 덕분에 많은 도움이 되겠어.",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695559768000
+                },
+                {
+                    "speaker": "speaker2",
+                    "personaID": "WZ000005",
+                    "participantID": "F0053",
+                    "utterance": "언제든 궁금한 내용이 있으시면 얘기해 주세요.",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695559777000
+                },
+                {
+                    "speaker": "speaker1",
+                    "personaID": "AP600007",
+                    "participantID": "E0053",
+                    "utterance": "그래. 공부가 안 돼서 요즘 가끔씩 초조하기도 한데 그럴 때 자주 물어볼게.",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "나는 요즘 가끔 초조하다.",
+                    "timestamp": 1695559815000
+                },
+                {
+                    "speaker": "speaker2",
+                    "personaID": "WZ000005",
+                    "participantID": "F0053",
+                    "utterance": "공부가 안 돼서 초조하시군요. 그럴 때 제가 도움이 되면 좋겠습니다.",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695559836000
+                },
+                {
+                    "speaker": "speaker1",
+                    "personaID": "AP600007",
+                    "participantID": "E0053",
+                    "utterance": "응 오늘도 도움이 됐어. 고마워 그럼 또 다음에 물어볼게.",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695559855000
+                },
+                {
+                    "speaker": "speaker2",
+                    "personaID": "WZ000005",
+                    "participantID": "F0053",
+                    "utterance": "네. 다음에도 또 질문해 주세요. ",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695559877000
+                }
+            ],
+            "sessionSummary": {
+                "apprentice": [
+                    "나는 관광 지명에 대한 공부를 하고 있다. ",
+                    "나는 요즘 가끔 초조하다."
+                ],
+                "wizard": [
+                    "당오름(堂岳) 또는 당산봉(唐山峰)은 제주특별자치도 제주시 한경면 고산리에 위치한 측화산으로 한경면(翰京面)은 제주특별자치도 제주시의 서쪽 끝에 있는 면이다.",
+                    "오름에는 크고 작은 봉우리가 있는데, 각 봉우리마다 이름이 있다. 주봉은 당오름이라 하고, 주봉 북쪽 봉수대터는 망오름 또는 개영·궤영이라고 한다."
+                ],
+                "dialogSummary": "질문자가 당오름과 당오름의 지명에 대해 질문했고 챗봇은 당오름(堂岳) 또는 당산봉(唐山峰)은 제주특별자치도 제주시 한경면 고산리에 위치한 측화산으로 한경면(翰京面)은 제주특별자치도 제주시의 서쪽 끝에 있는 면이다. 오름에는 크고 작은 봉우리가 있는데, 각 봉우리마다 이름이 있다. 주봉은 당오름이라 하고, 주봉 북쪽 봉수대터는 망오름 또는 개영·궤영이라고 한다고 답변했다."
+            },
+            "prevAggregatedSummary": {
+                "apprentice": [],
+                "wizard": []
+            }
+        },
+        {
+            "prevSessionID": "003819-1",
+            "prevTimeInfo": {
+                "timeNum": "3",
+                "timeUnit": "시간"
+            },
+            "nthSession": "2",
+            "numberOfUtterances": "14",
+            "numberOfTurns": "7",
+            "sessionID": "003819-2",
+            "sessionKeywords": [
+                "*트루아리비에르*,*트루아리비에르*의 지명"
+            ],
+            "dialog": [
+                {
+                    "speaker": "speaker1",
+                    "personaID": "AP600007",
+                    "participantID": "E0053",
+                    "utterance": "공부하다가 보니 벌써 3시간이 지났네.",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695560130000
+                },
+                {
+                    "speaker": "speaker2",
+                    "personaID": "WZ000005",
+                    "participantID": "F0053",
+                    "utterance": "네 아까는 당오름의 지명에 대해 물어보셨죠. ",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695560148000
+                },
+                {
+                    "speaker": "speaker1",
+                    "personaID": "AP600007",
+                    "participantID": "E0053",
+                    "utterance": "응응 기억하고 있구나. 또 다른 질문이 있어서 왔어. ",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695560162000
+                },
+                {
+                    "speaker": "speaker2",
+                    "personaID": "WZ000005",
+                    "participantID": "F0053",
+                    "utterance": "질문이 있으시군요. 무엇이든 얘기해 주세요. ",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695560173000
+                },
+                {
+                    "speaker": "speaker1",
+                    "personaID": "AP600007",
+                    "participantID": "E0053",
+                    "utterance": "이번에는 트루아리비에르를 공부하다가 잘 안 나와서 그러는데 알려줘. ",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695560198000
+                },
+                {
+                    "speaker": "speaker2",
+                    "personaID": "WZ000005",
+                    "participantID": "F0053",
+                    "utterance": "트루아리비에르(Trois-Rivières)는 캐나다 퀘벡주의 생모리스 강 하구에 위치해있는 도시입니다. ",
+                    "context": {
+                        "query": "트루아리비에르",
+                        "contents": [
+                            {
+                                "documentID": "1064056",
+                                "documentTitle": "트루아리비에르",
+                                "content": [
+                                    "트루아리비에르(Trois-Rivières)는 캐나다 퀘벡주의 생모리스 강 하구에 위치해있는 도시이다.",
+                                    "세인트로렌스강을 따라 몬트리올과 퀘벡 중간에 위치해있는 이 도시는 2016년을 기준으로 13만 4천여 명이 살고 있으며, 모리시 지역에서 인구가 가장 많은 도시이기도 하다.",
+                                    "1634년에 세워진 이 도시는 퀘벡 주에서 두 번째로 가장 오래된 도시이다.",
+                                    "어원.",
+                                    "도시의 어원은 17세기로 거슬러 올라간다.",
+                                    "이 곳을 프랑스인들이 처음 발견했을 때 생모리스 강 하구와 세인트로렌스강이 포트리 섬과 생캉탱 섬 사이의 세 개의 물길이 흐르는 것으로 보였다.",
+                                    "도시는 1535년 자크 카르티에가 세인트로렌스강을 지나는 탐험길에 생캉탱 섬에 십자가를 설치하기 위해 잠시 정박한 것으로 유명하였고 트루아리비에르라는 이름은 1599년에 샹플랭의 지리학자로 일했던 듀퐁그라베가 처음으로 쓰기 시작하였고 1603년에 지역 이름을 그렇게 짓게 되었다.",
+                                    "듀퐁그라베는 세인트로렌스강을 따라 몬트리올로 가던 도중에 첫 번째 지류, 반도, 두 번째 지류, 또다른 반도와 세 번째 지류를 만나 세 지류가 각각 다른 강인 것으로 착각하였고 당시 이 지리학자는 가운데에 있는 두 섬이 지류를 세 개로 나눈다는 사실을 알지 못했다."
+                                ]
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        [
+                            true,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false
+                        ]
+                    ],
+                    "summary": "트루아리비에르(Trois-Rivières)는 캐나다 퀘벡주의 생모리스 강 하구에 위치해있는 도시이다.",
+                    "timestamp": 1695560222000
+                },
+                {
+                    "speaker": "speaker1",
+                    "personaID": "AP600007",
+                    "participantID": "E0053",
+                    "utterance": "캐나다에 있었구나. 지명에 대해서도 알려줘. ",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695560246000
+                },
+                {
+                    "speaker": "speaker2",
+                    "personaID": "WZ000005",
+                    "participantID": "F0053",
+                    "utterance": "1535년 자크 카르티에가 세인트로렌스강을 지나는 탐험길에 생캉탱 섬에 십자가를 설치하기 위해 잠시 정박한 것으로 유명하였고 트루아리비에르라는 이름은 1599년에 샹플랭의 지리학자로 일했던 듀퐁그라베가 처음으로 쓰기 시작하였고 1603년에 지역 이름을 그렇게 짓게 되었다고 합니다. ",
+                    "context": {
+                        "query": "트루아리비에르",
+                        "contents": [
+                            {
+                                "documentID": "1064056",
+                                "documentTitle": "트루아리비에르",
+                                "content": [
+                                    "트루아리비에르(Trois-Rivières)는 캐나다 퀘벡주의 생모리스 강 하구에 위치해있는 도시이다.",
+                                    "세인트로렌스강을 따라 몬트리올과 퀘벡 중간에 위치해있는 이 도시는 2016년을 기준으로 13만 4천여 명이 살고 있으며, 모리시 지역에서 인구가 가장 많은 도시이기도 하다.",
+                                    "1634년에 세워진 이 도시는 퀘벡 주에서 두 번째로 가장 오래된 도시이다.",
+                                    "어원.",
+                                    "도시의 어원은 17세기로 거슬러 올라간다.",
+                                    "이 곳을 프랑스인들이 처음 발견했을 때 생모리스 강 하구와 세인트로렌스강이 포트리 섬과 생캉탱 섬 사이의 세 개의 물길이 흐르는 것으로 보였다.",
+                                    "도시는 1535년 자크 카르티에가 세인트로렌스강을 지나는 탐험길에 생캉탱 섬에 십자가를 설치하기 위해 잠시 정박한 것으로 유명하였고 트루아리비에르라는 이름은 1599년에 샹플랭의 지리학자로 일했던 듀퐁그라베가 처음으로 쓰기 시작하였고 1603년에 지역 이름을 그렇게 짓게 되었다.",
+                                    "듀퐁그라베는 세인트로렌스강을 따라 몬트리올로 가던 도중에 첫 번째 지류, 반도, 두 번째 지류, 또다른 반도와 세 번째 지류를 만나 세 지류가 각각 다른 강인 것으로 착각하였고 당시 이 지리학자는 가운데에 있는 두 섬이 지류를 세 개로 나눈다는 사실을 알지 못했다."
+                                ]
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        [
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            true,
+                            false
+                        ]
+                    ],
+                    "summary": "1535년 자크 카르티에가 세인트로렌스강을 지나는 탐험길에 생캉탱 섬에 십자가를 설치하기 위해 잠시 정박한 것으로 유명하였고 트루아리비에르라는 이름은 1599년에 샹플랭의 지리학자로 일했던 듀퐁그라베가 처음으로 쓰기 시작하였고 1603년에 지역 이름을 그렇게 짓게 되었다.",
+                    "timestamp": 1695560281000
+                },
+                {
+                    "speaker": "speaker1",
+                    "personaID": "AP600007",
+                    "participantID": "E0053",
+                    "utterance": "아하 그렇구나. 역시 잘 알고 있네?",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695560317000
+                },
+                {
+                    "speaker": "speaker2",
+                    "personaID": "WZ000005",
+                    "participantID": "F0053",
+                    "utterance": "네 지명에 대해서는 잘 알고 있습니다. ",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695560326000
+                },
+                {
+                    "speaker": "speaker1",
+                    "personaID": "AP600007",
+                    "participantID": "E0053",
+                    "utterance": "캐나다라고 하니까 생각났는데 나는 짠 음식을 좋아해서 외국 여행을 가도 괜찮을 것 같아",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "나는 짠 음식을 좋아한다.",
+                    "timestamp": 1695560350000
+                },
+                {
+                    "speaker": "speaker2",
+                    "personaID": "WZ000005",
+                    "participantID": "F0053",
+                    "utterance": "짠 음식을 좋아하시는 군요. 그러면 괜찮을 것 같습니다. ",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695560366000
+                },
+                {
+                    "speaker": "speaker1",
+                    "personaID": "AP600007",
+                    "participantID": "E0053",
+                    "utterance": "지명에 대해 공부하다 보니 여행도 가고 싶네. 잠깐 여행지 좀 검색해 봐야 겠다.",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695560391000
+                },
+                {
+                    "speaker": "speaker2",
+                    "personaID": "WZ000005",
+                    "participantID": "F0053",
+                    "utterance": "여행지 검색하다가 또 궁금한 게 있으면 말씀해 주세요.",
+                    "context": {
+                        "query": null,
+                        "contents": [
+                            {
+                                "documentID": null,
+                                "documentTitle": null,
+                                "content": []
+                            }
+                        ]
+                    },
+                    "selectedContents": [
+                        []
+                    ],
+                    "summary": "",
+                    "timestamp": 1695560403000
+                }
+            ],
+            "sessionSummary": {
+                "apprentice": [
+                    "나는 짠 음식을 좋아한다."
+                ],
+                "wizard": [
+                    "트루아리비에르(Trois-Rivières)는 캐나다 퀘벡주의 생모리스 강 하구에 위치해있는 도시이다.",
+                    "1535년 자크 카르티에가 세인트로렌스강을 지나는 탐험길에 생캉탱 섬에 십자가를 설치하기 위해 잠시 정박한 것으로 유명하였고 트루아리비에르라는 이름은 1599년에 샹플랭의 지리학자로 일했던 듀퐁그라베가 처음으로 쓰기 시작하였고 1603년에 지역 이름을 그렇게 짓게 되었다."
+                ],
+                "dialogSummary": "질문자가 트루아리비에르와 지명에 대해 질문했고 챗봇은 트루아리비에르(Trois-Rivières)는 캐나다 퀘벡주의 생모리스 강 하구에 위치해있는 도시이고 1535년 자크 카르티에가 세인트로렌스강을 지나는 탐험길에 생캉탱 섬에 십자가를 설치하기 위해 잠시 정박한 것으로 유명하였고 트루아리비에르라는 이름은 1599년에 샹플랭의 지리학자로 일했던 듀퐁그라베가 처음으로 쓰기 시작하였고 1603년에 지역 이름을 그렇게 짓게 되었다고 답변했다."
+            },
+            "prevAggregatedSummary": {
+                "apprentice": [
+                    "나는 관광 지명에 대한 공부를 하고 있다. ",
+                    "나는 요즘 가끔 초조하다."
+                ],
+                "wizard": [
+                    "당오름(堂岳) 또는 당산봉(唐山峰)은 제주특별자치도 제주시 한경면 고산리에 위치한 측화산으로 한경면(翰京面)은 제주특별자치도 제주시의 서쪽 끝에 있는 면이다.",
+                    "오름에는 크고 작은 봉우리가 있는데, 각 봉우리마다 이름이 있다. 주봉은 당오름이라 하고, 주봉 북쪽 봉수대터는 망오름 또는 개영·궤영이라고 한다."
+                ]
+            }
+        }
+    ]
+}

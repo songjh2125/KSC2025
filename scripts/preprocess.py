@@ -25,69 +25,97 @@ def load_config(cfg_path: str):
     else:
         return json.loads(text)
 
-# ==========================
-# 변환 로직 (단일 파일 → SAMSum형 레코드)
-# ==========================
-def map_speakers_to_labels(turns):
-    """speaker 순서대로 A/B/C... 라벨링"""
-    labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    label_map = {}
-    next_idx = 0
-    out = []
-    for t in turns:
-        spk = str(t.get("speaker", "")).strip()
-        utt = str(t.get("utterance", "")).strip()
-        if not utt:
-            continue
-        if spk not in label_map:
-            if next_idx < len(labels):
-                label_map[spk] = labels[next_idx]
-                next_idx += 1
-            else:
-                label_map[spk] = f"SPK{next_idx}"
-                next_idx += 1
-        out.append(f"{label_map[spk]}: {utt}")
-    return out
+# ---------------------------------------------------
+# 안전 UTF-8 리더 (LS/PS/BOM 제거)
+# ---------------------------------------------------
+def safe_read_utf8(path: Path) -> str:
+    s = path.read_text(encoding="utf-8", errors="replace")
+    return s.replace("\u2028", "").replace("\u2029", "").replace("\ufeff", "")
 
-
-def convert_aihub_json_to_records(in_path: Path):
+# ---------------------------------------------------
+# 화자 라벨링 (파일 전체 기준 A,B,C,...)
+# ---------------------------------------------------
+def label_all_sessions(sessions):
     """
-    요구사항:
-      - id = sessionInfo[].sessionID
-      - text = sessionInfo[].dialog -> "A: ..." 리스트
-      - summary = sessionInfo[].sessionSummary.dialogSummary
-      - 세션이 여러 개면 레코드 여러 개 생성
+    sessions: list of { dialog: [{speaker, utterance}, ...], sessionSummary: {dialogSummary} }
+    return:
+      text: ["A: ...", "B: ...", ...]            # 모든 세션 대화를 이어붙인 리스트
+      boundaries: [0/1, ...]                     # 각 세션의 '마지막 턴' 인덱스만 1
+      seg_summaries: ["", ..., "세션요약", ...]   # boundary 위치에만 요약 텍스트
+    """
+    labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    spk2lab = {}
+    next_idx = 0
+
+    text, boundaries, seg_summaries = [], [], []
+
+    for sess in sessions:
+        dialog = sess.get("dialog", []) or []
+        ss = sess.get("sessionSummary", {}) or {}
+        sum_text = str(ss.get("dialogSummary", "") or "").strip()
+
+        for turn in dialog:
+            spk = str(turn.get("speaker", "")).strip()
+            utt = str(turn.get("utterance", "")).strip()
+            if not utt:
+                continue
+            if spk not in spk2lab:
+                if next_idx < len(labels):
+                    spk2lab[spk] = labels[next_idx]
+                else:
+                    spk2lab[spk] = f"SPK{next_idx}"
+                next_idx += 1
+            text.append(f"{spk2lab[spk]}: {utt}")
+            boundaries.append(0)
+            seg_summaries.append("")
+
+        if dialog:
+            last_idx = len(text) - 1
+            boundaries[last_idx] = 1
+            seg_summaries[last_idx] = sum_text
+
+    return text, boundaries, seg_summaries
+
+# ---------------------------------------------------
+# 단일 파일 -> 1 레코드 (세션 합치기)
+# ---------------------------------------------------
+def convert_file_to_single_record(in_path: Path):
+    """
+    변경 규칙:
+      - 파일 안의 모든 세션을 하나의 레코드로 합침
+      - id: 파일 아이디 (FileInfo.filename 있으면 그 stem, 없으면 파일명 stem)
+      - text: 모든 세션 dialog를 순서대로 이어붙인 리스트
+      - boundaries: 각 세션의 마지막 턴 인덱스만 1
+      - seg_summaries: boundary 위치에만 해당 세션 요약 텍스트
     """
     try:
-        data = json.loads(in_path.read_text(encoding="utf-8"))
+        data = json.loads(safe_read_utf8(in_path))
     except Exception as e:
         sys.stderr.write(f"[WARN] 읽기 실패 {in_path}: {e}\n")
-        return []
+        return None
+
+    file_info = data.get("FileInfo", {}) or {}
+    filename = str(file_info.get("filename", "")).strip()
+    file_id = Path(filename).stem if filename else in_path.stem
 
     sessions = data.get("sessionInfo", []) or []
-    out = []
+    if not sessions:
+        return None
 
-    for s in sessions:
-        sid = str(s.get("sessionID", "")).strip()
-        dialog = s.get("dialog", []) or []
-        ss = s.get("sessionSummary", {}) or {}
-        summary = str(ss.get("dialogSummary", "") or "").strip()
+    text, boundaries, seg_summaries = label_all_sessions(sessions)
+    if not text:
+        return None
 
-        text_list = map_speakers_to_labels(dialog)
-        if not sid or not text_list:
-            continue
+    return {
+        "id": file_id,
+        "text": text,
+        "boundaries": boundaries,
+        "seg_summaries": seg_summaries,
+    }
 
-        out.append({
-            "id": sid,
-            "text": text_list,
-            "summary": summary
-        })
-    return out
-
-
-# ==========================
-# 파일 수집 및 병합
-# ==========================
+# ---------------------------------------------------
+# 파일 수집/쓰기
+# ---------------------------------------------------
 def collect_files(input_path: Path, pattern: str = "**/*.json"):
     if input_path.is_dir():
         return [Path(p) for p in glob(str(input_path / pattern), recursive=True)]
@@ -130,17 +158,15 @@ def main():
         in_path = Path(input_spec)
         files = collect_files(in_path, pattern)
 
-        total = 0
         out_records = []
         for fp in sorted(files):
-            recs = convert_aihub_json_to_records(fp)
-            if recs:
-                out_records.extend(recs)
-                total += len(recs)
+            rec = convert_file_to_single_record(fp)
+            if rec:
+                out_records.append(rec)
 
         write_jsonl(out_records, Path(output))
         merged.extend(out_records)
-        print(f"[INFO] wrote {total} records → {output}")
+        print(f"[INFO] wrote {len(out_records)} records → {output}")
 
     # 여러 파일을 하나로 합치기 (옵션)
     merge_output = cfg.get("merge_output")

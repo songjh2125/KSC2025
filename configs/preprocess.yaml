@@ -1,14 +1,32 @@
 # 처리 대상 목록
 targets:
+  # - input: "../data/011.일상대화_한국어_멀티세션_데이터/3.개방데이터/1.데이터/Training/02.라벨링데이터/TL_session2"   # 폴더 또는 단일 파일(.json)
+  #   pattern: "**/*.json"              # 폴더일 때만 사용. 기본값: **/*.json
+  #   output: "../data/train/TL_session2.jsonl"  # 이 대상의 출력 파일
+  # - input: "../data/011.일상대화_한국어_멀티세션_데이터/3.개방데이터/1.데이터/Training/02.라벨링데이터/TL_session3"   # 폴더 또는 단일 파일(.json)
+  #   pattern: "**/*.json"              # 폴더일 때만 사용. 기본값: **/*.json
+  #   output: "../data/train/TL_session3.jsonl"  # 이 대상의 출력 파일
+  # - input: "../data/011.일상대화_한국어_멀티세션_데이터/3.개방데이터/1.데이터/Training/02.라벨링데이터/TL_session4"   # 폴더 또는 단일 파일(.json)
+  #   pattern: "**/*.json"              # 폴더일 때만 사용. 기본값: **/*.json
+  #   output: "../data/train/TL_session4.jsonl"  # 이 대상의 출력 파일
+  # - input: "../data/011.일상대화_한국어_멀티세션_데이터/3.개방데이터/1.데이터/Validation/02.라벨링데이터/VL_session2"   # 폴더 또는 단일 파일(.json)
+  #   pattern: "**/*.json"              # 폴더일 때만 사용. 기본값: **/*.json
+  #   output: "../data/val/VL_session2.jsonl"  # 이 대상의 출력 파일
+  # - input: "../data/011.일상대화_한국어_멀티세션_데이터/3.개방데이터/1.데이터/Validation/02.라벨링데이터/VL_session3"   # 폴더 또는 단일 파일(.json)
+  #   pattern: "**/*.json"              # 폴더일 때만 사용. 기본값: **/*.json
+  #   output: "../data/val/VL_session3.jsonl"  # 이 대상의 출력 파일
+  # - input: "../data/011.일상대화_한국어_멀티세션_데이터/3.개방데이터/1.데이터/Validation/02.라벨링데이터/VL_session4"   # 폴더 또는 단일 파일(.json)
+  #   pattern: "**/*.json"              # 폴더일 때만 사용. 기본값: **/*.json
+  #   output: "../data/val/VL_session4.jsonl"  # 이 대상의 출력 파일
   - input: "../data_example/TL_session2"   # 폴더 또는 단일 파일(.json)
     pattern: "**/*.json"              # 폴더일 때만 사용. 기본값: **/*.json
     output: "../data_example/train/TL_session2.jsonl"  # 이 대상의 출력 파일
   - input: "../data_example/TL_session3"   # 폴더 또는 단일 파일(.json)
     pattern: "**/*.json"              # 폴더일 때만 사용. 기본값: **/*.json
     output: "../data_example/train/TL_session3.jsonl"  # 이 대상의 출력 파일
-  # - input: "../data/011.일상대화_한국어_멀티세션_데이터/3.개방데이터/1.데이터/Training/02.라벨링데이터/TL_session2"   # 폴더 또는 단일 파일(.json)
-  #   pattern: "**/*.json"              # 폴더일 때만 사용. 기본값: **/*.json
-  #   output: "../data/train/TL_session2.jsonl"  # 이 대상의 출력 파일
+
 
 # (선택) 모든 대상 결과를 한 파일로 합치기
 merge_output: "../data_example/train_data.jsonl"
+# merge_output: "../data/train_data.jsonl"
+# merge_output: "../data/val_data.jsonl"
