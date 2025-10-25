@@ -45,6 +45,11 @@ tensorboard/
 lightning_logs/
 
 # -----------------------------
+# aihubshell binary
+# -----------------------------
+aihubshell
+
+# -----------------------------
 # Environment / Config
 # -----------------------------
 .env
