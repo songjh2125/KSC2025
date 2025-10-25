@@ -1,0 +1,35 @@
+# 모델 / 경로 설정
+base_model: "Upstage/SOLAR-10.7B-Instruct-v1.0"
+embedding_model: "jhgan/ko-sroberta-multitask"
+output_dir: "out/solar-mem-qlora"
+
+# 데이터 경로
+train_path: "data/train_data.jsonl"
+val_path: "data/val_data.jsonl"
+
+# 학습 파라미터
+lr: 2e-4
+batch_size: 1
+grad_accum: 16
+epochs: 1
+max_length: 1024
+max_samples: 0
+warmup_ratio: 0.03
+seed: 42
+normalize: "basic"
+
+# LoRA 설정
+lora_r: 8
+lora_alpha: 16
+lora_dropout: 0.05
+target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
+bnb_4bit_compute_dtype: "float16"
+bnb_4bit_use_double_quant: true
+bnb_4bit_quant_type: "nf4"
