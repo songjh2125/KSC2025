@@ -42,6 +42,7 @@ artifacts/
 log/
 ksc/
 out/
+thresholds/
 wandb/
 tensorboard/
 lightning_logs/

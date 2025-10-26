@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 """
+mem 전용 추론 스크립트
+
 - STM 버퍼: 길이-적응 요약(Chunk)로 관리
 - boundary==1 감지되면 STM 전체 요약→LTM 전이(200자 지식카드)
 - 응답 시 LTM에서 Top-1(임계치 이상)만 골라 KV-priming → 사용자 프롬프트 이어서 생성
@@ -27,13 +29,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModel
-from transformers import BitsAndBytesConfig  # [추가] 4bit QLoRA 지원
+from transformers import BitsAndBytesConfig
 from peft import PeftModel
 
 from src.mem_modules import MemConfig, MemoryManager
 from src.summarizer_local import LocalSummarizer
 
-# ---- 모델/토크나이저 로드 ----
+
+# ---- 유틸: LoRA 어댑터에서 base 경로 추출 ----
 def _maybe_read_base_from_adapter(ckpt_dir: str) -> Optional[str]:
     """LoRA 어댑터 폴더의 adapter_config.json에서 base 모델 경로를 추출."""
     cfg_path = os.path.join(ckpt_dir, "adapter_config.json")
@@ -64,12 +67,14 @@ class AuxHeads(nn.Module):
             nn.Tanh(),
             nn.Linear(hidden_size, embed_dim),
         )
+
     def forward(self, pooled: torch.Tensor):
         b_logit = self.boundary(pooled).squeeze(-1)
         e_pred = self.summary_head(pooled)
         return b_logit, e_pred
-    
 
+
+# ---- 모델/토크나이저 로드 ----
 def load_model_and_tokenizer(ckpt_dir: str, load_4bit: bool = False):
     """
     ckpt_dir 가 LoRA 어댑터 디렉터리일 수도, 전체 모델 디렉터리일 수도 있음.
@@ -78,16 +83,18 @@ def load_model_and_tokenizer(ckpt_dir: str, load_4bit: bool = False):
     """
     base_model_path = _maybe_read_base_from_adapter(ckpt_dir) or ckpt_dir
 
-    # [변경] 4bit QLoRA 옵션
     quant_cfg = None
     if load_4bit:
         quant_cfg = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=(torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8 else torch.float16),
+            bnb_4bit_compute_dtype=(
+                torch.bfloat16
+                if torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
+                else torch.float16
+            ),
         )
 
-    # Base
     base = AutoModelForCausalLM.from_pretrained(
         base_model_path,
         device_map="auto",
@@ -98,7 +105,7 @@ def load_model_and_tokenizer(ckpt_dir: str, load_4bit: bool = False):
     if tok.pad_token is None:
         tok.pad_token = tok.eos_token
 
-    # LoRA 어댑터가 있으면 로드 시도
+    # LoRA 어댑터가 있으면 로드
     adapter_cfg = os.path.join(ckpt_dir, "adapter_config.json")
     if os.path.exists(adapter_cfg):
         try:
@@ -142,7 +149,7 @@ def load_aux(ckpt_dir: str, hidden_size: int, device: torch.device):
     return aux, embed_tok, embed_model, emb_dim
 
 
-# ---- 추론 세션 ----
+# ---- 추론 세션 (mem-only) ----
 class InferSession:
     def __init__(
         self,
@@ -150,37 +157,29 @@ class InferSession:
         max_new_tokens: int = 256,
         temperature: float = 0.7,
         top_p: float = 0.95,
-        thr: float = 0.60,         # LTM 검색 임계치
-        bthr: float = 0.50,        # 경계(토픽 전환) 임계치
+        thr: float = 0.60,       # LTM 검색 임계치 (코사인 유사도)
+        bthr: float = 0.50,      # 경계 임계치 (시그모이드 확률)
         summarizer_model: str = None,
         sum_8bit: bool = False,
         sum_4bit: bool = False,
-        mode: str = "mem",         # "mem"(기존) | "baseline"
-        load_4bit: bool = False,   # [추가] 본 모델 4bit
+        load_4bit: bool = False,
     ):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.tok, self.model = load_model_and_tokenizer(ckpt, load_4bit=load_4bit)
         self.hidden = self.model.config.hidden_size
-        
-        self.mode = mode
-        if self.mode == "mem":
-            # aux / memory
-            self.aux, embed_tok, embed_model, self.emb_dim = load_aux(ckpt, self.hidden, self.device)
-            self.mem = MemoryManager(MemConfig(), embed_model, embed_tok)
-            # 요약기
-            base_for_summarizer = summarizer_model or _maybe_read_base_from_adapter(ckpt) or ckpt
-            self.summarizer = LocalSummarizer(
-                model_name=base_for_summarizer,
-                max_new_tokens=128,
-                load_in_8bit=sum_8bit,
-                load_in_4bit=sum_4bit,
-                try_bfloat16=True,
-            )
-        else:
-            self.aux = None
-            self.mem = None
-            self.summarizer = None
-            self.emb_dim = None
+
+        # mem 구성요소
+        self.aux, embed_tok, embed_model, self.emb_dim = load_aux(ckpt, self.hidden, self.device)
+        self.mem = MemoryManager(MemConfig(), embed_model, embed_tok)
+
+        base_for_summarizer = summarizer_model or _maybe_read_base_from_adapter(ckpt) or ckpt
+        self.summarizer = LocalSummarizer(
+            model_name=base_for_summarizer,
+            max_new_tokens=128,
+            load_in_8bit=sum_8bit,
+            load_in_4bit=sum_4bit,
+            try_bfloat16=True,
+        )
 
         self.dialog_history: List[str] = []
         self.max_new = max_new_tokens
@@ -228,7 +227,6 @@ class InferSession:
 
         tail = "\n".join(self.mem.stm_text[-10:])
         topic_key = self.summarizer.summarize("\n".join(self.mem.stm_text)) if self.mem.stm_text else ""
-
         q_tail = self.summarizer.summarize(tail) if tail else ""
         q_key = topic_key
 
@@ -290,12 +288,10 @@ class InferSession:
     def step(self, user_text: str) -> str:
         # 1) STM 누적
         self.dialog_history.append(f"[A:] {user_text}")
-        if self.mode == "mem" and self.mem is not None:
-            self.mem.stm_append(f"[A:] {user_text}")
+        self.mem.stm_append(f"[A:] {user_text}")
 
         # 2) 길이-적응 요약(Chunk)
-        if self.mode == "mem" and self.mem is not None:
-            self.mem.stm_summarize_if_needed(self.tok, lambda mid: self.summarizer.summarize(mid))
+        self.mem.stm_summarize_if_needed(self.tok, lambda mid: self.summarizer.summarize(mid))
 
         # 3) 프롬프트 구성
         sys_prompt = "당신은 한국어 비서입니다. 최근 대화의 요지를 반영해 간결하고 정확하게 답하세요."
@@ -305,22 +301,20 @@ class InferSession:
         ids = enc["input_ids"].to(self.device)
         attn = (ids != self.tok.pad_token_id).long()
 
-        # 4) boundary 예측 (hidden_states 필요)
-        boundary = 0
-        if self.mode == "mem" and self.aux is not None:
-            with torch.no_grad():
-                out_tmp = self.model(input_ids=ids, attention_mask=attn, output_hidden_states=True)
-                pooled = out_tmp.hidden_states[-1][:, -64:, :].mean(dim=1)
-                b_logit, _ = self.aux(pooled)
-                prob = torch.sigmoid(b_logit)[0].item()
-            boundary = 1 if prob >= self._boundary_threshold else 0
+        # 4) boundary 예측
+        with torch.no_grad():
+            out_tmp = self.model(input_ids=ids, attention_mask=attn, output_hidden_states=True)
+            pooled = out_tmp.hidden_states[-1][:, -64:, :].mean(dim=1)
+            b_logit, _ = self.aux(pooled)
+            prob = torch.sigmoid(b_logit)[0].item()
+        boundary = 1 if prob >= self._boundary_threshold else 0
 
         # 5) 새 토픽이면 STM→LTM 전이
-        if self.mode == "mem" and boundary == 1:
+        if boundary == 1:
             self._commit_stm_to_ltm()
 
         # 6) LTM Top-1 검색
-        mem_card = self._retrieve_top1_card() if self.mode == "mem" else None
+        mem_card = self._retrieve_top1_card()
 
         # 7) KV-priming (있을 때만)
         if mem_card:
@@ -341,8 +335,7 @@ class InferSession:
 
         resp = out_text.split("[B:]")[-1].strip() if "[B:]" in out_text else out_text.strip()
         self.dialog_history.append(f"[B:] {resp}")
-        if self.mode == "mem" and self.mem is not None:
-            self.mem.stm_append(f"[B:] {resp}")
+        self.mem.stm_append(f"[B:] {resp}")
         return resp
 
 
@@ -360,48 +353,67 @@ def main():
                     help="요약용 경량 모델 (기본: TinyLlama)")
     ap.add_argument("--sum_8bit", action="store_true", help="요약기 8bit 로드")
     ap.add_argument("--sum_4bit", action="store_true", help="요약기 4bit 로드")
-    ap.add_argument("--mode", type=str, default="mem", choices=["mem","baseline"],
-                    help="baseline: 메모리/경계/KV-priming 비활성화")
-    ap.add_argument("--load_4bit", action="store_true", help="본 모델 4bit QLoRA 로드")  # [추가]
+    ap.add_argument("--load_4bit", action="store_true", help="본 모델 4bit QLoRA 로드")
+    ap.add_argument("--thresholds_json", type=str, default=None,
+                    help="DEV에서 저장한 {\"bthr\": float, \"thr\": float} JSON 경로")
     args = ap.parse_args()
 
-    # [변경] 로그 경로: log/mem vs log/base
-    subdir = "mem" if args.mode == "mem" else "base"
+    # 로그 디렉터리 (항상 mem)
+    subdir = "mem"
     os.makedirs(os.path.join("log", subdir), exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     infer_log_path = os.path.join("log", subdir, f"infer_{ts}.txt")
     with open(infer_log_path, "a", encoding="utf-8") as f:
-        f.write(json.dumps({"event":"infer_start","timestamp":ts,"ckpt":args.ckpt,"mode":args.mode,"load_4bit":args.load_4bit}, ensure_ascii=False) + "\n")
+        f.write(json.dumps({
+            "event": "infer_start",
+            "timestamp": ts,
+            "ckpt": args.ckpt,
+            "mode": "mem",
+            "load_4bit": args.load_4bit
+        }, ensure_ascii=False) + "\n")
 
+    # thresholds_json 로드(있으면 CLI 기본값을 덮어씀)
+    if args.thresholds_json:
+        try:
+            cfg = json.load(open(args.thresholds_json, "r", encoding="utf-8"))
+            if "bthr" in cfg and cfg["bthr"] is not None:
+                args.bthr = float(cfg["bthr"])
+            if "thr" in cfg and cfg["thr"] is not None:
+                args.thr = float(cfg["thr"])
+            print(f"[thresholds_json] loaded: bthr={args.bthr:.4f}, thr={args.thr:.4f}")
+        except Exception as e:
+            print(f"[thresholds_json] load failed: {e} (ignored)")
+
+    # 세션 생성
     sess = InferSession(
-        args.ckpt,
-        args.max_new_tokens,
-        args.temperature,
-        args.top_p,
-        args.thr,
-        args.bthr,
+        ckpt=args.ckpt,
+        max_new_tokens=args.max_new_tokens,
+        temperature=args.temperature,
+        top_p=args.top_p,
+        thr=args.thr,
+        bthr=args.bthr,
         summarizer_model=args.summarizer_model,
         sum_8bit=args.sum_8bit,
         sum_4bit=args.sum_4bit,
-        mode=args.mode,
-        load_4bit=args.load_4bit,   # [추가]
+        load_4bit=args.load_4bit,
     )
 
     print("메모리 추론 데모 시작.")
     print("명령: /exit 종료, /reset 초기화, /state 상태, /thr [값] LTM 임계치, /bthr [값] 경계 임계치")
-    if args.mode == "baseline":
-        print("[baseline 모드] 메모리/경계/KV-priming 비활성화")
+
     while True:
         try:
             user = input("\n사용자 > ").strip()
         except (EOFError, KeyboardInterrupt):
-            print("\n종료."); break
+            print("\n종료.")
+            break
 
         if not user:
             continue
+
         # 로그: user 입력
         with open(infer_log_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps({"event":"user","text":user}, ensure_ascii=False) + "\n")
+            f.write(json.dumps({"event": "user", "text": user}, ensure_ascii=False) + "\n")
 
         # ----- 런타임 임계치 조정 -----
         if user.startswith("/thr"):
@@ -415,7 +427,7 @@ def main():
                 except ValueError:
                     print("형식: /thr 0.60  (0.0~1.0 사이 실수)")
             with open(infer_log_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps({"event":"cmd","cmd":user}, ensure_ascii=False) + "\n")
+                f.write(json.dumps({"event": "cmd", "cmd": user}, ensure_ascii=False) + "\n")
             continue
 
         if user.startswith("/bthr"):
@@ -429,41 +441,41 @@ def main():
                 except ValueError:
                     print("형식: /bthr 0.50  (0.0~1.0 사이 실수)")
             with open(infer_log_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps({"event":"cmd","cmd":user}, ensure_ascii=False) + "\n")
+                f.write(json.dumps({"event": "cmd", "cmd": user}, ensure_ascii=False) + "\n")
             continue
         # --------------------------------
 
         if user == "/exit":
-            print("\n종료."); 
+            print("\n종료.")
             with open(infer_log_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps({"event":"infer_end"}, ensure_ascii=False) + "\n")
+                f.write(json.dumps({"event": "infer_end"}, ensure_ascii=False) + "\n")
             break
+
         if user == "/reset":
-            if sess.mem is not None:
-                sess.mem.stm_text.clear()
+            sess.mem.stm_text.clear()
             sess.dialog_history.clear()
             print("리셋 완료.")
             with open(infer_log_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps({"event":"cmd","cmd":user}, ensure_ascii=False) + "\n")
+                f.write(json.dumps({"event": "cmd", "cmd": user}, ensure_ascii=False) + "\n")
             continue
+
         if user == "/state":
-            if sess.mem is not None:
-                print(f"STM_len={len(sess.mem.stm_text)}")
-                print("최근 STM tail:")
-                for t in sess.mem.stm_text[-6:]:
-                    print("  ", t)
-            else:
-                print("baseline 모드: STM/LTM 비활성화")
+            print(f"STM_len={len(sess.mem.stm_text)}")
+            print("최근 STM tail:")
+            for t in sess.mem.stm_text[-6:]:
+                print("  ", t)
             print(f"LTM 임계치(thr): {sess.get_ltm_threshold():.2f}")
             print(f"경계 임계치(bthr): {sess.get_boundary_threshold():.2f}")
             with open(infer_log_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps({"event":"cmd","cmd":user}, ensure_ascii=False) + "\n")
+                f.write(json.dumps({"event": "cmd", "cmd": user}, ensure_ascii=False) + "\n")
             continue
 
+        # 실제 응답 생성
         resp = sess.step(user)
         print(f"모델  > {resp}")
         with open(infer_log_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps({"event":"model","text":resp}, ensure_ascii=False) + "\n")
+            f.write(json.dumps({"event": "model", "text": resp}, ensure_ascii=False) + "\n")
+
 
 if __name__ == "__main__":
     main()
