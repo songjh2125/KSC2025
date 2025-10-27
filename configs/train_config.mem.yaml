@@ -15,7 +15,7 @@ grad_accum: 64         # 메모리 여유 없으면 48~64까지도 OK
 epochs: 1
 max_length: 512   # 2048 ~ 2500 개의 토큰
 max_samples: 0
-max_train_steps: 20000
+max_train_steps: 6000
 warmup_ratio: 0.03
 seed: 42
 normalize: "basic"

@@ -390,7 +390,8 @@ class Trainer:
             n = getattr(self.cfg, "pool_last_n_tokens", 64)
             if n and n > 0:
                 n = min(n, T)
-                pooled = hs[:, -n:, :].mean(dim=1)
+                # pooled = hs[:, -n:, :].mean(dim=1)
+                pooled = hs.mean(dim=1)
             else:
                 pooled = hs.mean(dim=1)  # 전체 평균 → 세션 전체 맥락 반영
             self._last_hidden = pooled
@@ -558,7 +559,8 @@ class Trainer:
 
         info_nce = self._contrastive_infonce(e_pred.float(), e_t.float(), has_sum_mask, tau=0.07)
 
-        loss = lm + bce + 0.25 * (cos + mse) + 0.5 * info_nce
+        # loss = lm + bce + 0.25 * (cos + mse) + 0.5 * info_nce
+        loss = lm + bce + 0.5*(cos + mse) + 1.0*info_nce
         logs = {
             "lm": lm.item(),
             "bce": bce.item(),

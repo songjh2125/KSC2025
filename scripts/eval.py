@@ -276,59 +276,63 @@ def eval_boundary_and_summary(
         seen = set()
         selected = [(i, c) for (i, c) in sorted(selected, key=lambda x: x[0]) if not (i in seen or seen.add(i))]
 
-        ctx_list = []
-        for i, count_for_boundary in selected:
-            ctx_list.append(turns[i])
-            context = "\n".join(ctx_list)
-            prompt = f"<s>[INST] <<SYS>>\n{sys_prompt}\n<</SYS>>\n{context}\n[B:] "
-            enc = tok(prompt, return_tensors="pt", add_special_tokens=False).to(device)
-            out = model(
-                input_ids=enc["input_ids"],
-                attention_mask=(enc["input_ids"]!=tok.pad_token_id).long(),
-                output_hidden_states=True
-            )
-            pooled = out.hidden_states[-1].mean(dim=1)
-            aux_dtype = next(aux.parameters()).dtype
-            if pooled.dtype != aux_dtype:
-                pooled = pooled.to(dtype=aux_dtype)
-            b_logit, e_pred = aux(pooled)
-            prob = torch.sigmoid(b_logit)[0].item()
-            pred = 1 if prob >= boundary_thr else 0
-            gt = int(boundaries[i])
+    ctx_list = []
+    for i, count_for_boundary in selected:
+        ctx_list.append(turns[i])
+        context = "\n".join(ctx_list)
 
-            # --- 경계 지표는 '선택 후보'에 한해서만 카운트 ---
-            if count_for_boundary == 1:
-                if pred==1 and gt==1: TP+=1
-                elif pred==1 and gt==0: FP+=1
-                elif pred==0 and gt==1: FN+=1
-                else: TN+=1
-                # Raw for sweep(선택 후보만)
-                boundary_probs.append(prob)
-                boundary_labels.append(gt)
+        # (학습과 동일한 인코딩)
+        enc = tok(context, return_tensors="pt", truncation=True).to(device)
+        out = model(
+            input_ids=enc["input_ids"],
+            attention_mask=enc.get("attention_mask", None),
+            output_hidden_states=True
+        )
 
-            # Retrieval (pseudo LTM)
-            if len(ltm_bank) > 0:
-                q = F.normalize(e_pred[0].float(), dim=-1)
-                bank = torch.stack(ltm_bank, dim=0).float()
-                sims = torch.matmul(bank, q)
-                max_sim = float(sims.max().item())
-                mem_queries += 1
-                dlg_q += 1
-                mem_max_sims.append(max_sim)
-                dlg_max_sims.append(max_sim)
-                if max_sim >= thr:
-                    mem_hits += 1
-                    dlg_hits += 1
+        # (pool_last_n_tokens=0 → 전체 평균 풀링)
+        pooled = out.hidden_states[-1].mean(dim=1)
 
-            # Commit GT summary when boundary==1
-            if gt==1:
-                gt_sum = seg_summaries[i] if i < len(seg_summaries) else ""
-                if gt_sum and gt_sum.strip():
-                    e_t = encode_embed(embed_tok, embed_model, device, gt_sum, emb_dim)
-                    e_pred_n = F.normalize(e_pred[0].float(), dim=-1)
-                    cos = float((e_pred_n * e_t.float()).sum().item())
-                    cos_sims.append(cos)
-                    ltm_bank.append(e_t.float())
+        aux_dtype = next(aux.parameters()).dtype
+        if pooled.dtype != aux_dtype:
+            pooled = pooled.to(dtype=aux_dtype)
+
+        b_logit, e_pred = aux(pooled)
+        prob = torch.sigmoid(b_logit)[0].item()
+        pred = 1 if prob >= boundary_thr else 0
+        gt = int(boundaries[i])
+
+        if count_for_boundary == 1:
+            if pred==1 and gt==1: TP+=1
+            elif pred==1 and gt==0: FP+=1
+            elif pred==0 and gt==1: FN+=1
+            else: TN+=1
+            boundary_probs.append(prob)
+            boundary_labels.append(gt)
+
+        # Retrieval
+        if len(ltm_bank) > 0:
+            q = F.normalize(e_pred[0].float(), dim=-1)
+            bank = torch.stack(ltm_bank, dim=0).float()
+            sims = torch.matmul(bank, q)
+            max_sim = float(sims.max().item())
+            mem_queries += 1
+            dlg_q += 1
+            mem_max_sims.append(max_sim)
+            dlg_max_sims.append(max_sim)
+            if max_sim >= thr:
+                mem_hits += 1
+                dlg_hits += 1
+
+        # Commit GT summary when boundary==1
+        if gt==1:
+            gt_sum = seg_summaries[i] if i < len(seg_summaries) else ""
+            if gt_sum and gt_sum.strip():
+                e_t = encode_embed(embed_tok, embed_model, device, gt_sum, emb_dim)
+                e_pred_n = F.normalize(e_pred[0].float(), dim=-1)
+                cos = float((e_pred_n * e_t.float()).sum().item())
+                cos_sims.append(cos)
+                ltm_bank.append(e_t.float())
+
 
         per_dialog_stats.append({
             "hit_rate": (dlg_hits / dlg_q) if dlg_q > 0 else 0.0,
