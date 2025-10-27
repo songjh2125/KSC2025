@@ -94,9 +94,12 @@ stack-data==0.6.3
 sympy==1.13.1
 threadpoolctl==3.6.0
 tokenizers==0.22.1
+
+--extra-index-url https://download.pytorch.org/whl/cu124
 torch==2.6.0+cu124
 torchaudio==2.6.0+cu124
 torchvision==0.21.0+cu124
+
 tornado==6.5.2
 tqdm==4.67.1
 traitlets==5.14.3
@@ -110,3 +113,5 @@ wcwidth==0.2.14
 xxhash==3.6.0
 yarl==1.22.0
 matplotlib
+
+python-dotenv>=1.0.1

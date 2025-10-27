@@ -12,13 +12,9 @@ Evaluation script for baseline and memory-augmented models.
 import os, json, argparse, random, datetime, csv
 from typing import List, Dict, Any, Tuple
 
-<<<<<<< HEAD
-import numpy as np
-=======
 from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv())
 
->>>>>>> 51883dc (environment setting)
 import torch, torch.nn as nn, torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModel
 from transformers import BitsAndBytesConfig
