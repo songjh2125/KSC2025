@@ -72,7 +72,6 @@ propcache==0.4.1
 psutil==7.1.1
 ptyprocess==0.7.0
 pure_eval==0.2.3
-py-hanspell==1.1
 pyarrow==21.0.0
 pydantic==2.12.3
 pydantic_core==2.41.4
