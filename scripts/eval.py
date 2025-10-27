@@ -15,6 +15,7 @@ from typing import List, Dict, Any, Tuple
 from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv())
 
+import numpy as np
 import torch, torch.nn as nn, torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModel
 from transformers import BitsAndBytesConfig
