@@ -1,6 +1,14 @@
+# eval.py
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from __future__ import annotations
+"""
+Evaluation script for baseline and memory-augmented models.
+- Ensures the *same* embedding model used during training is used at eval time.
+- Reads embedding metadata from aux.pt / embedding_meta.json if available.
+- Provides boundary/summary evaluation, retrieval stats, (optional) LLM-as-Judge.
+"""
+
 import os, json, argparse, random, datetime, csv
 from typing import List, Dict, Any, Tuple
 
@@ -11,7 +19,7 @@ from transformers import BitsAndBytesConfig
 from peft import PeftModel
 from statistics import mean
 
-# ====== AuxHeads (학습과 동일) ======
+# ====== AuxHeads (must match training) ======
 class AuxHeads(nn.Module):
     def __init__(self, hidden_size: int, embed_dim: int = 768):
         super().__init__()
@@ -30,7 +38,8 @@ class AuxHeads(nn.Module):
         e_pred = self.summary_head(pooled)
         return b_logit, e_pred
 
-# ====== 로딩 유틸 ======
+# ====== Loading Utilities ======
+
 def _maybe_read_base_from_adapter(ckpt_dir: str):
     path = os.path.join(ckpt_dir, "adapter_config.json")
     if not os.path.exists(path): return None
@@ -63,7 +72,7 @@ def load_lm_and_tok(ckpt_dir: str, load_4bit: bool = False):
     tok = AutoTokenizer.from_pretrained(base_model_path, use_fast=False)
     if tok.pad_token is None:
         tok.pad_token = tok.eos_token
-    # LoRA 어댑터 로드(있으면)
+    # Load LoRA adapter if present
     if os.path.exists(os.path.join(ckpt_dir, "adapter_config.json")):
         try:
             model = PeftModel.from_pretrained(model, ckpt_dir)
@@ -77,32 +86,83 @@ def load_lm_and_tok(ckpt_dir: str, load_4bit: bool = False):
         pass
     return model, tok
 
-def load_aux_and_embed(ckpt_dir: str, hidden_size: int, device: torch.device, embed_model_name: str = "jhgan/ko-sroberta-multitask"):
+def load_aux_and_embed(
+    ckpt_dir: str,
+    hidden_size: int,
+    device: torch.device,
+    embed_model_name: str | None = None,
+):
+    """
+    Resolve embedding model for evaluation with the following priority:
+      1) aux.pt: {embed_model_name, emb_dim}
+      2) embedding_meta.json: {embedding_model, emb_dim}
+      3) user override: embed_model_name (CLI)
+      4) training default: 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
+    Returns: aux, embed_tok, embed_model, emb_dim, final_embed_model
+    """
     aux_path = os.path.join(ckpt_dir, "aux.pt")
-    embed_tok = AutoTokenizer.from_pretrained(embed_model_name)
-    embed_model = AutoModel.from_pretrained(embed_model_name).to(device)
-    for p in embed_model.parameters(): p.requires_grad = False
-    emb_dim = getattr(embed_model.config, "hidden_size", 768)
-    aux = AuxHeads(hidden_size=hidden_size, embed_dim=emb_dim).to(device)
+    meta_model = None; meta_dim = None; state = None
+
     if os.path.exists(aux_path):
-        state = torch.load(aux_path, map_location=device)
-        aux.load_state_dict(state["aux"])
+        try:
+            state = torch.load(aux_path, map_location=device)
+            meta_model = state.get("embed_model_name")
+            meta_dim   = state.get("emb_dim")
+        except Exception as e:
+            print(f"[warn] failed to read aux meta: {e}")
+
+    meta_json = os.path.join(ckpt_dir, "embedding_meta.json")
+    if (meta_model is None or meta_dim is None) and os.path.exists(meta_json):
+        try:
+            j = json.load(open(meta_json, "r", encoding="utf-8"))
+            meta_model = meta_model or j.get("embedding_model")
+            meta_dim   = meta_dim   or j.get("emb_dim")
+        except Exception:
+            pass
+
+    final_embed_model = meta_model or embed_model_name \
+        or "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+
+    embed_tok = AutoTokenizer.from_pretrained(final_embed_model)
+    embed_model = AutoModel.from_pretrained(final_embed_model).to(device)
+    for p in embed_model.parameters():
+        p.requires_grad = False
+
+    # Infer dimension (prefer meta if present)
+    emb_dim = int(meta_dim or getattr(embed_model.config, "hidden_size", 768))
+
+    aux = AuxHeads(hidden_size=hidden_size, embed_dim=emb_dim).to(device)
+    if state is not None and "aux" in state:
+        try:
+            aux.load_state_dict(state["aux"])  # type: ignore[arg-type]
+        except RuntimeError as e:
+            raise RuntimeError(
+                "[shape-mismatch] AuxHeads and embedding dimension mismatch. "
+                "Use the SAME embedding model as training. "
+                f"final_embed_model={final_embed_model}, emb_dim={emb_dim}. Cause: {e}"
+            )
     else:
-        print(f"[warn] aux.pt not found in {ckpt_dir}. Random init.")
+        print(f"[warn] aux.pt not found or missing 'aux' in {ckpt_dir}. Random init.")
+
     aux.eval()
-    return aux, embed_tok, embed_model, emb_dim
+    return aux, embed_tok, embed_model, emb_dim, final_embed_model
 
 @torch.no_grad()
 def encode_embed(embed_tok, embed_model, device, text: str, emb_dim: int):
     if not text or not text.strip():
         return torch.zeros(emb_dim, device=device, dtype=torch.float32)
-    toks = embed_tok(text, return_tensors='pt', truncation=True, padding=True).to(device)
+    toks = embed_tok(text, return_tensors='pt', truncation=True, padding=True, max_length=512).to(device)
     out = embed_model(**toks)
-    emb = out.last_hidden_state.mean(dim=1).squeeze(0)  # [D]
+    attn = toks["attention_mask"].unsqueeze(-1).to(out.last_hidden_state.dtype)  # [B,L,1]
+    # masked mean pooling (sentence-transformers 방식)
+    token_sum = (out.last_hidden_state * attn).sum(dim=1)              # [B,D]
+    lengths  = attn.sum(dim=1).clamp(min=1.0)                          # [B,1]
+    emb = (token_sum / lengths).squeeze(0)                              # [D]
     emb = F.normalize(emb, dim=-1)
     return emb.to(device, dtype=torch.float32)
 
-# ====== 데이터 로드 ======
+# ====== Data I/O ======
+
 def load_jsonl(path: str) -> List[Dict[str, Any]]:
     if not os.path.exists(path):
         raise FileNotFoundError(f"Data file not found: {path}")
@@ -113,9 +173,10 @@ def load_jsonl(path: str) -> List[Dict[str, Any]]:
                 items.append(json.loads(line))
     return items
 
-# ====== sweep 파서 ======
+# ====== Sweep / Metrics ======
+
 def parse_sweep(spec: str) -> List[float]:
-    # "a:b:s" 또는 "a,b,c" 지원
+    # "a:b:s" or "a,b,c"
     vals: List[float] = []
     if ":" in spec:
         a, b, s = spec.split(":")
@@ -126,11 +187,10 @@ def parse_sweep(spec: str) -> List[float]:
         vals = [round(start + i*step, 10) for i in range(n)]
     else:
         vals = [float(x) for x in spec.split(",") if x.strip()!=""]
-    # 0~1 범위로 클램프 & 중복 제거/정렬
+    # Clamp to [0,1], dedup, sort
     vals = sorted(set(max(0.0, min(1.0, v)) for v in vals))
     return vals
 
-# ====== F1 유틸 ======
 def prf1_from_probs_labels(probs: List[float], labels: List[int], thr: float):
     TP=FP=FN=TN=0
     for p, y in zip(probs, labels):
@@ -145,25 +205,26 @@ def prf1_from_probs_labels(probs: List[float], labels: List[int], thr: float):
     acc  = (TP+TN)/max(1, (TP+TN+FP+FN))
     return prec, rec, f1, acc, {"TP":TP,"FP":FP,"FN":FN,"TN":TN}
 
-# ====== 평가 (thr/boundary_thr 사용, per-dialog 통계 & 원시 boundary 확률/라벨 수집) ======
+# ====== Core Eval (boundary/summary + retrieval) ======
+
+@torch.no_grad()
 def eval_boundary_and_summary(
     model, tok, aux, embed_tok, embed_model, emb_dim, data,
-    boundary_thr: float = 0.5, max_turns: int = 0, thr: float = 0.60
+    boundary_thr: float = 0.5, max_turns: int = 0, thr: float = 0.60,
+    eval_negatives_per_pos: int = 1, eval_include_last: bool = True
 ):
     device = next(model.parameters()).device
     sys_prompt = "당신은 한국어 비서입니다. 최근 대화의 요지를 반영해 간결하고 정확하게 답하세요."
 
-    # 전역 통계
+    # Global counters
     TP=FP=FN=TN=0
     cos_sims: List[float] = []
 
-    # 메모리 검색 전역 통계
     mem_queries = 0
     mem_hits = 0
     mem_max_sims: List[float] = []
     per_dialog_stats: List[Dict[str, Any]] = []
 
-    # boundary 스윕을 위한 원시 값(옵션 A: 모든 턴 대상)
     boundary_probs: List[float] = []
     boundary_labels: List[int]  = []
 
@@ -172,20 +233,51 @@ def eval_boundary_and_summary(
         boundaries: List[int] = ex.get("boundaries", []) or [0]*len(turns)
         seg_summaries: List[str] = ex.get("seg_summaries", []) or [""]*len(turns)
 
-        # 길이 정합
         L = len(turns)
         if len(boundaries) < L: boundaries += [0]*(L-len(boundaries))
         if len(seg_summaries) < L: seg_summaries += [""]*(L-len(seg_summaries))
 
-        # 대화 단위 의사 LTM
         ltm_bank: List[torch.Tensor] = []
         dlg_q = 0
         dlg_hits = 0
         dlg_max_sims: List[float] = []
 
         upto = L if max_turns<=0 else min(L, max_turns)
+
+        pos_idx = [i for i in range(upto) if int(boundaries[i]) == 1]
+        neg_idx = [i for i in range(upto) if int(boundaries[i]) == 0]
+
+        selected: List[Tuple[int, int]] = []  # (i, count_for_boundary=1|0)
+        # 우선 모든 양성은 반드시 평가
+        selected.extend((i, 1) for i in pos_idx)
+        # 하드 네거티브 수집(±1)
+        hard_negs: List[int] = []
+        for p in pos_idx:
+            if p-1 >= 0 and boundaries[p-1] == 0: hard_negs.append(p-1)
+            if p+1 < upto and boundaries[p+1] == 0: hard_negs.append(p+1)
+        # unique
+        hard_negs = list(dict.fromkeys(hard_negs))
+        K_total = eval_negatives_per_pos * max(1, len(pos_idx))
+        chosen_negs = hard_negs[:K_total]
+        remain = K_total - len(chosen_negs)
+        if remain > 0:
+            pool = [i for i in neg_idx if i not in set(hard_negs)]
+            if len(pool) > 0:
+                chosen_negs += random.sample(pool, min(remain, len(pool)))
+        selected.extend((i, 1) for i in chosen_negs)
+
+        # 마지막 턴 포함(컨텍스트/요약 임베딩용), 경계지표에는 포함하지 않음
+        if eval_include_last and upto > 0:
+            i_last = upto - 1
+            if all(i_last != x for x, _ in selected):
+                selected.append((i_last, 0))
+
+        # 정렬/중복 제거
+        seen = set()
+        selected = [(i, c) for (i, c) in sorted(selected, key=lambda x: x[0]) if not (i in seen or seen.add(i))]
+
         ctx_list = []
-        for i in range(upto):
+        for i, count_for_boundary in selected:
             ctx_list.append(turns[i])
             context = "\n".join(ctx_list)
             prompt = f"<s>[INST] <<SYS>>\n{sys_prompt}\n<</SYS>>\n{context}\n[B:] "
@@ -195,27 +287,30 @@ def eval_boundary_and_summary(
                 attention_mask=(enc["input_ids"]!=tok.pad_token_id).long(),
                 output_hidden_states=True
             )
-            pooled = out.hidden_states[-1][:, -64:, :].mean(dim=1)  # 학습과 동일
+            pooled = out.hidden_states[-1].mean(dim=1)
+            aux_dtype = next(aux.parameters()).dtype
+            if pooled.dtype != aux_dtype:
+                pooled = pooled.to(dtype=aux_dtype)
             b_logit, e_pred = aux(pooled)
             prob = torch.sigmoid(b_logit)[0].item()
             pred = 1 if prob >= boundary_thr else 0
             gt = int(boundaries[i])
 
-            # Boundary 전역 카운트
-            if pred==1 and gt==1: TP+=1
-            elif pred==1 and gt==0: FP+=1
-            elif pred==0 and gt==1: FN+=1
-            else: TN+=1
+            # --- 경계 지표는 '선택 후보'에 한해서만 카운트 ---
+            if count_for_boundary == 1:
+                if pred==1 and gt==1: TP+=1
+                elif pred==1 and gt==0: FP+=1
+                elif pred==0 and gt==1: FN+=1
+                else: TN+=1
+                # Raw for sweep(선택 후보만)
+                boundary_probs.append(prob)
+                boundary_labels.append(gt)
 
-            # 스윕용 원시 저장 (옵션 A: 모든 턴)
-            boundary_probs.append(prob)
-            boundary_labels.append(gt)
-
-            # ----- 의사 LTM 검색 (thr 사용) -----
+            # Retrieval (pseudo LTM)
             if len(ltm_bank) > 0:
-                q = F.normalize(e_pred[0].float(), dim=-1)  # [D]
-                bank = torch.stack(ltm_bank, dim=0).float() # [N, D] (정규화됨)
-                sims = torch.matmul(bank, q)                # [N]
+                q = F.normalize(e_pred[0].float(), dim=-1)
+                bank = torch.stack(ltm_bank, dim=0).float()
+                sims = torch.matmul(bank, q)
                 max_sim = float(sims.max().item())
                 mem_queries += 1
                 dlg_q += 1
@@ -225,15 +320,14 @@ def eval_boundary_and_summary(
                     mem_hits += 1
                     dlg_hits += 1
 
-            # Summary Cosine (GT boundary==1일 때 기록 및 LTM 커밋)
+            # Commit GT summary when boundary==1
             if gt==1:
                 gt_sum = seg_summaries[i] if i < len(seg_summaries) else ""
                 if gt_sum and gt_sum.strip():
-                    e_t = encode_embed(embed_tok, embed_model, device, gt_sum, emb_dim)  # 정규화됨
+                    e_t = encode_embed(embed_tok, embed_model, device, gt_sum, emb_dim)
                     e_pred_n = F.normalize(e_pred[0].float(), dim=-1)
                     cos = float((e_pred_n * e_t.float()).sum().item())
                     cos_sims.append(cos)
-                    # STM->LTM 전이 모사
                     ltm_bank.append(e_t.float())
 
         per_dialog_stats.append({
@@ -243,7 +337,7 @@ def eval_boundary_and_summary(
             "hits": dlg_hits,
         })
 
-    # 전역 Boundary 지표(현 boundary_thr 기준)
+    # Boundary metrics (for current boundary_thr)
     prec = TP / (TP+FP) if (TP+FP)>0 else 0.0
     rec  = TP / (TP+FN) if (TP+FN)>0 else 0.0
     f1   = 2*prec*rec/(prec+rec) if (prec+rec)>0 else 0.0
@@ -262,15 +356,17 @@ def eval_boundary_and_summary(
             "queries": mem_queries,
             "hits": mem_hits,
             "avg_max_sim": mem_avg_max_sim,
-            "per_dialog": per_dialog_stats
+            "per_dialog": per_dialog_stats,
+            "all_max_sims": mem_max_sims,
         },
-        "boundary_raw": {  # 스윕/곡선용 원시 값
+        "boundary_raw": {
             "probs": boundary_probs,
             "labels": boundary_labels
         }
     }
 
-# ====== LLM-as-Judge ======
+# ====== LLM-as-Judge (optional) ======
+
 JUDGE_PROMPT = """당신은 대화 품질 평가자입니다.
 주어진 대화 맥락과 모델 응답을 보고 '일관성, 관련성, 사실성'을 1~5 점수로 평가하세요.
 오직 숫자만 출력하세요.
@@ -341,7 +437,8 @@ def eval_judge(model, tok, data, sample_n: int = 50, gen_max_new: int = 128, tem
 
     return {"judge_avg": (sum(scores)/len(scores) if scores else None), "n": len(scores)}
 
-# ====== 플로팅/CSV 유틸 ======
+# ====== Plotting / CSV ======
+
 def ensure_dir(p: str):
     if p and not os.path.exists(p):
         os.makedirs(p, exist_ok=True)
@@ -389,29 +486,7 @@ def plot_figures(per: List[Dict[str,Any]], res12: Dict[str,Any], gate_sweep: Lis
     plt.tight_layout(); plt.savefig(os.path.join(outdir,"hit_rate_scatter.png")); plt.savefig(os.path.join(outdir,"hit_rate_scatter.svg"))
     plt.close()
 
-    # 4) gate sweep: kept fraction
-    if gate_sweep and kept_fracs:
-        plt.figure()
-        plt.plot(gate_sweep, kept_fracs)
-        plt.xlabel("gate τ"); plt.ylabel("kept fraction"); plt.title("Gate sweep: kept fraction vs τ")
-        plt.tight_layout(); plt.savefig(os.path.join(outdir,"gate_sweep_kept.png")); plt.savefig(os.path.join(outdir,"gate_sweep_kept.svg"))
-        plt.close()
-
-    # 5) gate sweep: judge avg
-    if judge_curve:
-        xs = [t for t,_ in judge_curve]; ys = [y for _,y in judge_curve]
-        plt.figure()
-        plt.plot(xs, ys)
-        plt.xlabel("gate τ"); plt.ylabel("Judge avg"); plt.title("Gate sweep: Judge score vs τ")
-        plt.tight_layout(); plt.savefig(os.path.join(outdir,"gate_sweep_judge.png")); plt.savefig(os.path.join(outdir,"gate_sweep_judge.svg"))
-        plt.close()
-
-    # 6) summary cosine mean 기록
-    sc = res12.get("summary_cosine", {})
-    with open(os.path.join(outdir, "summary_cosine.txt"), "w", encoding="utf-8") as f:
-        f.write(json.dumps(sc, ensure_ascii=False, indent=2))
-
-    # 7) bthr sweep: F1 vs bthr
+    # 4) bthr sweep: F1 vs bthr
     if bthr_vals and bthr_f1s:
         plt.figure()
         plt.plot(bthr_vals, bthr_f1s)
@@ -423,7 +498,13 @@ def plot_figures(per: List[Dict[str,Any]], res12: Dict[str,Any], gate_sweep: Lis
         plt.savefig(os.path.join(outdir,"bthr_sweep_f1.svg"))
         plt.close()
 
-# ====== MEM 평가(스윕/리포트/저장) ======
+    # 5) summary cosine mean (record to file)
+    sc = res12.get("summary_cosine", {})
+    with open(os.path.join(outdir, "summary_cosine.txt"), "w", encoding="utf-8") as f:
+        f.write(json.dumps(sc, ensure_ascii=False, indent=2))
+
+# ====== MEM evaluation (sweep/report/save) ======
+
 def run_mem_eval(args, ckpt: str, data_path: str):
     random.seed(args.seed); torch.manual_seed(args.seed)
     if torch.cuda.is_available(): torch.cuda.manual_seed_all(args.seed)
@@ -433,26 +514,32 @@ def run_mem_eval(args, ckpt: str, data_path: str):
     hidden = model.config.hidden_size
     data = load_jsonl(data_path)
 
-    aux, embed_tok, embed_model, emb_dim = load_aux_and_embed(ckpt, hidden, device)
+    aux, embed_tok, embed_model, emb_dim, final_embed_model = load_aux_and_embed(
+        ckpt, hidden, device, embed_model_name=args.embed_model_name
+    )
+    print(f"[embed] using embedding model: {final_embed_model} (dim={emb_dim})")
+
     res12 = eval_boundary_and_summary(
         model, tok, aux, embed_tok, embed_model, emb_dim, data,
-        boundary_thr=args.boundary_thr, max_turns=args.max_turns, thr=args.thr
+        boundary_thr=args.boundary_thr, max_turns=args.max_turns, thr=args.thr,
+        eval_negatives_per_pos=args.eval_negatives_per_pos,
+        eval_include_last=args.eval_include_last
     )
     print("[MEM Boundary/Summary] ", json.dumps(res12, ensure_ascii=False, indent=2))
 
-    # 게이팅용 데이터 (Judge)
-    data_for_judge = data
-    if args.judge_gate_hit_rate is not None:
-        per = res12.get("memory_retrieval", {}).get("per_dialog", [])
-        if per and len(per) == len(data):
-            mask = [ (d.get("hit_rate", 0.0) >= args.judge_gate_hit_rate) for d in per ]
-            data_for_judge = [ex for ex, ok in zip(data, mask) if ok]
-            print(f"[gate] judge_gate_hit_rate={args.judge_gate_hit_rate} → {len(data_for_judge)}/{len(data)} dialogs kept")
-        else:
-            print("[gate] per_dialog stats missing or length mismatch; gating skipped.")
-
+    # Judge (optional) — no gating by default (left hooks kept for future use)
     res3 = None
     if args.judge:
+        data_for_judge = data
+        if args.judge_gate_hit_rate is not None:
+            per = res12.get("memory_retrieval", {}).get("per_dialog", [])
+            if per and len(per) == len(data):
+                mask = [ (d.get("hit_rate", 0.0) >= args.judge_gate_hit_rate) for d in per ]
+                data_for_judge = [ex for ex, ok in zip(data, mask) if ok]
+                print(f"[gate] judge_gate_hit_rate={args.judge_gate_hit_rate} → {len(data_for_judge)}/{len(data)} dialogs kept")
+            else:
+                print("[gate] per_dialog stats missing or length mismatch; gating skipped.")
+
         res3 = eval_judge(
             model, tok, data_for_judge,
             sample_n=args.sample_n,
@@ -466,11 +553,9 @@ def run_mem_eval(args, ckpt: str, data_path: str):
     else:
         print("[MEM LLM-as-Judge] skipped (use --judge)")
 
-    # 스윕(bthr/thr)
+    # bthr sweep (F1)
     bthr_vals: List[float] = []; bthr_f1s: List[float] = []
-    thr_vals: List[float] = []; thr_hit_rates: List[float] = []
-    best_bthr = None; best_thr = None
-
+    best_bthr = None
     if args.bthr_sweep:
         raw = res12.get("boundary_raw", {})
         probs = raw.get("probs", []); labels= raw.get("labels", [])
@@ -483,21 +568,35 @@ def run_mem_eval(args, ckpt: str, data_path: str):
             best_bthr = float(bthr_vals[i])
             print(f"[bthr] best F1 at {best_bthr:.4f} (F1={bthr_f1s[i]:.4f})")
 
+    # thr sweep (hit_rate)
+    thr_vals: List[float] = []; thr_hit_rates: List[float] = []
+    best_thr = None
     if args.thr_sweep:
         thr_vals = parse_sweep(args.thr_sweep)
-        for t in thr_vals:
-            tmp = eval_boundary_and_summary(
-                model, tok, aux, embed_tok, embed_model, emb_dim, data,
-                boundary_thr=(best_bthr if best_bthr is not None else args.boundary_thr),
-                max_turns=args.max_turns, thr=t
-            )
-            thr_hit_rates.append(tmp.get("memory_retrieval", {}).get("hit_rate", 0.0))
+        base_mr = res12.get("memory_retrieval", {})
+        sims = base_mr.get("all_max_sims", None)
+        if sims is None:
+            print("[thr_sweep] all_max_sims missing; falling back to slow recompute.")
+            for t in thr_vals:
+                tmp = eval_boundary_and_summary(
+                    model, tok, aux, embed_tok, embed_model, emb_dim, data,
+                    boundary_thr=(best_bthr if best_bthr is not None else args.boundary_thr),
+                    max_turns=args.max_turns, thr=t,
+                    eval_negatives_per_pos=args.eval_negatives_per_pos,
+                    eval_include_last=args.eval_include_last
+                )
+                thr_hit_rates.append(tmp.get("memory_retrieval", {}).get("hit_rate", 0.0))
+        else:
+            n = len(sims)
+            for t in thr_vals:
+                hits = sum(1 for v in sims if v >= t)
+                thr_hit_rates.append( (hits / n) if n > 0 else 0.0 )
         if thr_vals and thr_hit_rates:
             j = int(np.argmax(thr_hit_rates))
             best_thr = float(thr_vals[j])
             print(f"[thr] best hit_rate at {best_thr:.4f} (hit_rate={thr_hit_rates[j]:.4f})")
 
-    # 플롯/CSV
+    # Plots/CSV
     if args.plot_dir:
         outdir = os.path.join(args.plot_dir, "mem")
         ensure_dir(outdir)
@@ -511,7 +610,7 @@ def run_mem_eval(args, ckpt: str, data_path: str):
         save_csv_per_dialog(per, path)
         print(f"[csv] mem per-dialog stats saved to {path}")
 
-    # 최적 임계치 JSON 저장(요청 시)
+    # Save best thresholds (optional)
     if args.save_best_thresholds:
         out_cfg = {
             "bthr": (best_bthr if best_bthr is not None else args.boundary_thr),
@@ -530,7 +629,7 @@ def run_mem_eval(args, ckpt: str, data_path: str):
         except Exception as e:
             print(f"[save_best_thresholds] failed: {e}")
 
-    # 로그 저장
+    # Persist log
     os.makedirs(os.path.join("log", "mem"), exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     base = os.path.basename(data_path).replace(".jsonl","")
@@ -560,13 +659,16 @@ def run_mem_eval(args, ckpt: str, data_path: str):
         "thr_sweep_vals": thr_vals if args.thr_sweep else None,
         "thr_sweep_hit_rates": thr_hit_rates if args.thr_sweep else None,
         "best_bthr_from_sweep": best_bthr,
-        "best_thr_from_sweep": best_thr
+        "best_thr_from_sweep": best_thr,
+        "embedding_model_used": final_embed_model,
+        "embedding_dim": emb_dim,
     }
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
     print(f"[saved] {out_path}")
 
-# ====== BASE 평가(Judge만) ======
+# ====== Baseline-only evaluation (Judge only) ======
+
 def run_base_eval(args, ckpt: str, data_path: str):
     random.seed(args.seed); torch.manual_seed(args.seed)
     if torch.cuda.is_available(): torch.cuda.manual_seed_all(args.seed)
@@ -589,7 +691,7 @@ def run_base_eval(args, ckpt: str, data_path: str):
     else:
         print("[BASE LLM-as-Judge] skipped (use --judge)")
 
-    # 로그 저장
+    # Persist log
     os.makedirs(os.path.join("log", "base"), exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     base = os.path.basename(data_path).replace(".jsonl","")
@@ -610,10 +712,11 @@ def run_base_eval(args, ckpt: str, data_path: str):
         json.dump(payload, f, ensure_ascii=False, indent=2)
     print(f"[saved] {out_path}")
 
-# ====== main ======
+# ====== CLI ======
+
 def main():
     ap = argparse.ArgumentParser()
-    # 모드/경로
+    # Modes/paths
     ap.add_argument("--mode", type=str, choices=["base","mem","both"], default="both",
                     help="평가 모드: base(베이스라인), mem(메모리), both(둘 다 순차 실행)")
     ap.add_argument("--ckpt", type=str, default=None, help="공용 ckpt (개별 미지정 시 사용)")
@@ -623,7 +726,7 @@ def main():
     ap.add_argument("--data_base", type=str, default=None, help="베이스라인 데이터(jsonl)")
     ap.add_argument("--data_mem", type=str, default=None, help="메모리 데이터(jsonl)")
 
-    # 공통
+    # Common
     ap.add_argument("--load_4bit", action="store_true", help="모델 4bit 로드")
     ap.add_argument("--gen_max_new", type=int, default=128, help="Judge 생성 토큰 수")
     ap.add_argument("--temperature", type=float, default=0.7, help="Judge 생성 temperature")
@@ -634,10 +737,16 @@ def main():
     ap.add_argument("--sample_n", type=int, default=50)
     ap.add_argument("--judge_use_all", action="store_true", help="Judge 전체 사용")
 
-    # mem 전용 파라미터
+    # Embedding override (optional)
+    ap.add_argument("--embed_model_name", type=str, default=None,
+                    help="평가 시 강제로 사용할 임베딩 모델 이름(권장: 학습과 동일)")
+
+    # MEM-only params
     ap.add_argument("--boundary_thr", type=float, default=0.50, help="경계 임계치 (bthr)")
     ap.add_argument("--thr", type=float, default=0.60, help="LTM retrieval threshold (cosine)")
     ap.add_argument("--max_turns", type=int, default=0, help="0은 전체 턴 평가")
+    ap.add_argument("--eval-negatives-per-pos", type=int, default=1, help="평가 시 각 양성당 네거티브 후보 수")
+    ap.add_argument("--eval-include-last", action="store_true", default=True, help="평가 시 마지막 턴을 컨텍스트/요약용으로 포함(경계지표 제외)")
     ap.add_argument("--judge_gate_hit_rate", type=float, default=None,
                     help="메모리 hit_rate가 이 값 이상인 대화만 Judge 집계")
     ap.add_argument("--thr_sweep", type=str, default=None,
@@ -650,7 +759,7 @@ def main():
     ap.add_argument("--export_csv", type=str, default=None, help="per-dialog CSV 저장 경로")
     args = ap.parse_args()
 
-    # 경로 해석
+    # Resolve paths
     ckpt_base = args.ckpt_base or args.ckpt
     ckpt_mem  = args.ckpt_mem  or args.ckpt
     data_base = args.data_base or args.data

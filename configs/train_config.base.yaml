@@ -1,23 +1,21 @@
 # train_config.base.yaml
 # ----- 모델 / 경로 -----
 base_model: "Qwen/Qwen2.5-1.5B-Instruct"
-embedding_model: "jhgan/ko-sroberta-multitask"   # base 모드에선 학습에서 실질적 사용 X
 output_dir: "out/qwen-qlora-base"
 
 # ----- 데이터 경로 -----
 train_path: "data/train_data.jsonl"
-val_path: "data/val_data.jsonl"
 
 # ----- 학습 파라미터 -----
 lr: 2e-4
-batch_size: 1
-grad_accum: 64     # 메모리 여유 없으면 48~64까지도 OK
-epochs: 1
-max_length: 2048   # 2048 ~ 2500 개의 토큰
+batch_size: 2
+grad_accum: 64
+epochs: 999999          # cap으로 자를거라 크게 설정
+max_length: 512
 max_samples: 0
+max_train_steps: 20000   # mem과 동일 하드 컷
 warmup_ratio: 0.03
 seed: 42
-normalize: "basic"
 
 # ----- LoRA -----
 lora_r: 8
@@ -33,12 +31,13 @@ target_modules:
   - gate_proj
 
 # ----- QLoRA 4bit -----
-bnb_4bit_compute_dtype: "bfloat16"
+bnb_4bit_compute_dtype: "bfloat16"   # 3080이면 문제가 나면 "float16"로 변경
 bnb_4bit_use_double_quant: true
 bnb_4bit_quant_type: "nf4"
 try_flash_attn: false
 
-# ----- 메모리 관련 (base에선 꺼둠) -----
-enable_memory_loss: false
-pool_last_n_tokens: 64
-contrastive_tau: 0.07
+# ----- 샘플링(mem과 완전 동일) -----
+use_sum_if_boundary: true         # baseline에선 의미는 없지만 통일성 위해 둠
+sample_mode: pos_plus_k_neg
+negatives_per_pos: 1
+include_last: false

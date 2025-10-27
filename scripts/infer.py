@@ -10,6 +10,10 @@ mem 전용 추론 스크립트
 - boundary==1 감지되면 STM 전체 요약→LTM 전이(200자 지식카드)
 - 응답 시 LTM에서 Top-1(임계치 이상)만 골라 KV-priming → 사용자 프롬프트 이어서 생성
 
+주의:
+  - 런타임 검색/전이/응답 생성 전 과정에서 Summary Head의 예측 임베딩(e_pred)은 사용하지 않는다.
+    (경계 확률만 사용) 임베딩·요약은 MemoryManager + LocalSummarizer 경로를 따른다.
+
 런타임 명령:
   /thr [값]    : LTM 검색 임계치(0~1) 조회/설정
   /bthr [값]   : 토픽 경계 임계치(0~1) 조회/설정
@@ -69,6 +73,9 @@ class AuxHeads(nn.Module):
         )
 
     def forward(self, pooled: torch.Tensor):
+        # 주의: 추론(runtime)에서는 아래 e_pred를 사용하지 않는다.
+        #       경계 확률만 사용하므로, 호출 측에서는 boundary 서브모듈만 직접 호출한다.
+        #       (state_dict 로딩 호환을 위해 구조는 유지)
         b_logit = self.boundary(pooled).squeeze(-1)
         e_pred = self.summary_head(pooled)
         return b_logit, e_pred
@@ -124,28 +131,37 @@ def load_model_and_tokenizer(ckpt_dir: str, load_4bit: bool = False):
     return tok, base
 
 
-def load_aux(ckpt_dir: str, hidden_size: int, device: torch.device):
+def load_aux(ckpt_dir: str, hidden_size: int, device: torch.device, embed_model_name: str | None = None):
     """
     학습 코드에서는 aux만 'aux.pt'로 저장했으므로 여기서 그것만 로드.
     """
     aux_path = os.path.join(ckpt_dir, "aux.pt")
 
     # 추론 임베딩 모델 (학습 시 사용한 것과 동일 권장)
-    embed_model_name = "jhgan/ko-sroberta-multitask"
-    embed_tok = AutoTokenizer.from_pretrained(embed_model_name)
-    embed_model = AutoModel.from_pretrained(embed_model_name).to(device)
-    for p in embed_model.parameters():
-        p.requires_grad = False
-    emb_dim = getattr(embed_model.config, "hidden_size", 768)
-
-    aux = AuxHeads(hidden_size=hidden_size, embed_dim=emb_dim).to(device)
+    meta_model, meta_dim, state = None, None, None
     if os.path.exists(aux_path):
         state = torch.load(aux_path, map_location=device)
+        meta_model = state.get("embed_model_name"); meta_dim = state.get("emb_dim")
+    meta_json = os.path.join(ckpt_dir, "embedding_meta.json")
+    if (meta_model is None or meta_dim is None) and os.path.exists(meta_json):
+        j = json.load(open(meta_json, "r", encoding="utf-8"))
+        meta_model = meta_model or j.get("embedding_model")
+        meta_dim   = meta_dim   or j.get("emb_dim")
+    final_embed = meta_model or embed_model_name or "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    embed_tok = AutoTokenizer.from_pretrained(final_embed)
+    embed_model = AutoModel.from_pretrained(final_embed).to(device)
+    for p in embed_model.parameters():
+        p.requires_grad = False
+    emb_dim = int(meta_dim or getattr(embed_model.config, "hidden_size", 768))
+
+    aux = AuxHeads(hidden_size=hidden_size, embed_dim=emb_dim).to(device)
+    if state is not None:
         aux.load_state_dict(state["aux"])
     else:
         print(f"[warn] aux.pt not found in {ckpt_dir}. Proceeding with randomly initialized AuxHeads.")
 
     aux.eval()
+    print(f"[embed] using embedding model (infer): {final_embed} (dim={emb_dim})")
     return aux, embed_tok, embed_model, emb_dim
 
 
@@ -301,11 +317,16 @@ class InferSession:
         ids = enc["input_ids"].to(self.device)
         attn = (ids != self.tok.pad_token_id).long()
 
-        # 4) boundary 예측
+        # 4) boundary 예측 (e_pred 계산 생략)
         with torch.no_grad():
             out_tmp = self.model(input_ids=ids, attention_mask=attn, output_hidden_states=True)
             pooled = out_tmp.hidden_states[-1][:, -64:, :].mean(dim=1)
-            b_logit, _ = self.aux(pooled)
+
+            aux_dtype = next(self.aux.parameters()).dtype
+            if pooled.dtype != aux_dtype:
+                pooled = pooled.to(dtype=aux_dtype)
+
+            b_logit = self.aux.boundary(pooled).squeeze(-1)
             prob = torch.sigmoid(b_logit)[0].item()
         boundary = 1 if prob >= self._boundary_threshold else 0
 

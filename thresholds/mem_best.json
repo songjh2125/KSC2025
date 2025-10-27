@@ -1,0 +1,6 @@
+{
+  "bthr": 0.58,
+  "thr": 0.4,
+  "source": "eval.py(mem)",
+  "note": "bthr from F1-max; thr from hit_rate-max (or provided args if sweep missing)."
+}

@@ -10,11 +10,12 @@ val_path: "data/val_data.jsonl"
 
 # ----- 학습 파라미터 -----
 lr: 2e-4
-batch_size: 1
+batch_size: 2
 grad_accum: 64         # 메모리 여유 없으면 48~64까지도 OK
 epochs: 1
-max_length: 2048       # 2048 ~ 2500 개의 토큰
+max_length: 512   # 2048 ~ 2500 개의 토큰
 max_samples: 0
+max_train_steps: 20000
 warmup_ratio: 0.03
 seed: 42
 normalize: "basic"
@@ -40,5 +41,9 @@ try_flash_attn: false
 
 # ----- 메모리 학습 on -----
 enable_memory_loss: true          # ← 여기만 base와 다름
-pool_last_n_tokens: 64
 contrastive_tau: 0.07
+use_sum_if_boundary: true
+sample_mode: pos_plus_k_neg
+negatives_per_pos: 1
+include_last: false
+pool_last_n_tokens: 0   # 전체 맥락 기반 감지

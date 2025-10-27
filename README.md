@@ -53,13 +53,13 @@ python scripts/memLLM_QLoRA_QWEN_train.py \
 
 ### 2. 평가
 ```bash
-# 메모리: Dev에서 임계치 찾기
+# 메모리: Dev에서 임계치 찾기 (--thr_sweep 0.55,0.60,0.65 \)
 python scripts/eval.py \
   --mode mem \
   --ckpt_mem out/qwen-qlora-mem \
   --data_mem data/val_data.jsonl \
   --load_4bit \
-  --judge --judge_model gpt-4o-mini --judge_gate_hit_rate 0.5 \
+  --judge --judge_model gpt-4o-mini --judge_gate_hit_rate 0.0 \
   --sample_n 80 --gen_max_new 192 --temperature 0.6 --top_p 0.92 \
   --bthr_sweep 0.10:0.90:0.02 \
   --thr_sweep 0.40:0.85:0.01 \
@@ -72,10 +72,10 @@ python scripts/eval.py \
   --mode both \
   --ckpt_base out/qwen-qlora-base \
   --ckpt_mem  out/qwen-qlora-mem \
-  --data_base cache/labels_ko_samsum.jsonl \
+  --data_base data/val_data.jsonl \
   --data_mem  data/val_data.jsonl \
   --load_4bit \
-  --judge --judge_model gpt-4o-mini --judge_gate_hit_rate 0.5 \
+  --judge --judge_model gpt-4o-mini --judge_gate_hit_rate 0.0 \
   --sample_n 80 --gen_max_new 192 --temperature 0.6 --top_p 0.92 \
   --bthr_sweep 0.10:0.90:0.02 \
   --thr_sweep 0.40:0.85:0.01 \
